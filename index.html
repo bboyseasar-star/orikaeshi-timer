@@ -74,8 +74,24 @@ body[data-screen="end"] #end{display:flex}
 .is-second .phase-label{color:var(--second)}
 .pause-note{font-size:2.6vh;color:var(--ink-sub);font-weight:600;letter-spacing:.12em}
 .tools{display:flex;gap:6px}
-.clock{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;font-size:min(30vw,58vh);line-height:.9;letter-spacing:-.02em;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;transition:opacity .3s}
-.clock.is-long{font-size:min(24vw,58vh)}
+/* 円（左）＋残り時間（右）。狭い画面・縦長では上下 */
+.timer-body{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;gap:5vw}
+.dial{flex:none;width:min(68vh,46vw);height:min(68vh,46vw);transition:opacity .3s}
+.dial svg{display:block;width:100%;height:100%;overflow:visible}
+.dial-face{fill:var(--paper)}
+.dial-rim{fill:none;stroke:var(--rule);stroke-width:1}
+.dial-first{fill:var(--first)}
+.dial-second{fill:var(--second)}
+.dial-tick{stroke:var(--ink);stroke-width:2}
+.dial-turn{stroke:var(--ink);stroke-width:2.6}
+.dial-label{fill:var(--ink-sub);font-size:11px;font-weight:700;font-family:var(--font)}
+.readout{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:2.4vh;min-width:0;width:calc(min(16vw,30vh) * 2.95)} /* 幅を固定して、10:00→9:59 で円が横に動かないように */
+.clock{display:flex;font-size:min(16vw,30vh);line-height:.9;letter-spacing:-.02em;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;transition:opacity .3s}
+.clock.is-long{font-size:min(12.5vw,30vh)}
+.timer-sub{margin:0;display:flex;align-items:baseline;gap:.6em;font-size:min(2.4vw,4.2vh);font-weight:600;color:var(--ink-sub);letter-spacing:.08em;white-space:nowrap}
+.timer-sub b{color:var(--ink);font-weight:600;letter-spacing:0;font-size:1.2em}
+.is-second .timer-sub{color:var(--second);font-weight:700;letter-spacing:.3em}
+.is-paused .dial{opacity:.42}
 .clock-t{display:inline-block;white-space:nowrap}
 .colon{display:inline-block;position:relative;width:max(3px,.058em);height:.72em;margin:0 .09em;vertical-align:baseline}
 .colon i{position:absolute;left:0;width:max(3px,.058em);height:max(3px,.058em);border-radius:50%;background:var(--ink-sub)}
@@ -158,6 +174,10 @@ body[data-screen="timer"] .notices{display:flex}
 .pip-pause{font-size:12px;color:var(--ink-sub);font-weight:600;margin-left:.6em;letter-spacing:.1em}
 .pip .icon-btn{width:36px;height:36px}
 .pip .icon-btn svg{width:20px;height:20px}
+.pip-mid{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;gap:12px}
+.pip-dial{display:none;flex:none;width:55vh;height:55vh}
+.pip-dial svg{display:block;width:100%;height:100%;overflow:visible}
+.pip.is-paused .pip-dial{opacity:.42}
 .pip-clock{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;font-size:min(34vw,46vh);line-height:.9;font-weight:600;letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 .pip-clock.is-long{font-size:min(27vw,46vh)}
 .pip.is-paused .pip-clock{opacity:.42}
@@ -179,6 +199,13 @@ body[data-screen="timer"] .notices{display:flex}
 .pip[data-mode="end"] .pip-end{flex-direction:column;gap:6px;text-align:center}
 .pip-end-title{margin:0;font-size:min(14vw,26vh);font-weight:800;letter-spacing:.2em;padding-left:.2em;line-height:1.15}
 .pip-end-sub{margin:0;font-size:min(5.4vw,10vh);font-weight:600;opacity:.85;letter-spacing:.04em}
+/* 小窓に余裕があるときだけ、数字の左に小さな円（帯の代わり） */
+@media (min-width:300px) and (min-height:180px){
+  .pip .pip-dial{display:block}
+  .pip .track{display:none}
+  .pip .pip-clock{flex:none;font-size:min(20vw,34vh)}
+  .pip .pip-clock.is-long{font-size:min(15.5vw,34vh)}
+}
 @media (max-height:159px){
   .pip .pip-top,.pip .track{display:none}
   .pip-normal{padding:4px 8px}
@@ -189,6 +216,14 @@ body[data-screen="timer"] .notices{display:flex}
 }
 
 /* ---------- 狭い画面（幅800px以下） ---------- */
+@media (max-width:800px), (max-aspect-ratio:1/1){
+  .timer-body{flex-direction:column;gap:3vh}
+  .readout{align-items:center;gap:1.4vh;width:auto}
+  .dial{width:min(78vw,46vh);height:min(78vw,46vh)}
+  .clock{font-size:min(22vw,14vh)}
+  .clock.is-long{font-size:min(17vw,14vh)}
+  .timer-sub{font-size:clamp(14px,4vw,22px)}
+}
 @media (max-width:800px){
   .screen{padding:16px 16px 20px}
   .brand{font-size:clamp(16px,4.6vw,22px);letter-spacing:.08em}
@@ -281,8 +316,13 @@ body[data-screen="timer"] .notices{display:flex}
       <button class="icon-btn" id="pipBtn" type="button" aria-label="コンパクト表示" title="コンパクト表示（小窓をほかのアプリの上に表示）" aria-pressed="false"></button>
     </div>
   </header>
-  <div class="clock" id="clock" role="timer" aria-live="off"></div>
-  <div id="trackHost"></div>
+  <div class="timer-body">
+    <div class="dial" id="dial"></div>
+    <div class="readout">
+      <div class="clock" id="clock" role="timer" aria-live="off"></div>
+      <p class="timer-sub" id="timerSub"><span id="subLabel">折り返しまで</span><b class="num" id="subTime"></b></p>
+    </div>
+  </div>
 </main>
 
 <!-- 折り返し画面 -->
@@ -386,6 +426,18 @@ body[data-screen="timer"] .notices{display:flex}
       '<div class="track-line"><span class="fill fill-a"></span><span class="fill fill-b"></span></div>' +
       '<span class="notch"></span><span class="notch-label">折</span><span class="marker"></span>' +
     '</div>';
+
+  // 減っていく扇形（タイムタイマー型）。12時が終点、反時計回りに残り時間ぶん描く
+  var DIAL_R = 100;
+  var DIAL_HTML =
+    '<svg viewBox="-116 -116 232 232" aria-hidden="true" focusable="false">' +
+      '<circle class="dial-face" r="' + DIAL_R + '"/>' +
+      '<path class="dial-first"/><path class="dial-second"/>' +
+      '<circle class="dial-rim" r="' + DIAL_R + '"/>' +
+      '<line class="dial-tick" x1="0" y1="-' + (DIAL_R + 1) + '" x2="0" y2="-' + (DIAL_R - 10) + '"/>' +
+      '<line class="dial-turn" x1="0" y1="' + (DIAL_R + 1) + '" x2="0" y2="' + (DIAL_R - 22) + '"/>' +
+      '<text class="dial-label" x="0" y="115" text-anchor="middle">折</text>' +
+    '</svg>';
 
   /* ===== 倍速デバッグ（?speed=60 など。既定は等速） ===== */
   var SPEED = (function () {
@@ -529,6 +581,30 @@ body[data-screen="timer"] .notices{display:flex}
     track.classList.toggle('is-second', second);
   }
 
+  // 12時から反時計回りに a 度の円周上の点
+  function dialPt(a) {
+    var r = a * Math.PI / 180;
+    return (-DIAL_R * Math.sin(r)).toFixed(3) + ' ' + (-DIAL_R * Math.cos(r)).toFixed(3);
+  }
+  // a1→a2（反時計回り、0〜180度の範囲で使う）の扇形。幅ほぼ0なら空
+  function sectorPath(a1, a2) {
+    var span = a2 - a1;
+    if (!(span > 0.05)) return '';
+    return 'M0 0L' + dialPt(a1) + 'A' + DIAL_R + ' ' + DIAL_R + ' 0 ' + (span > 180 ? 1 : 0) + ' 0 ' + dialPt(a2) + 'Z';
+  }
+  // 残り割合 q（0〜1）を描く。後半ぶん（0〜180度）は柿渋、前半ぶん（180〜360度）は深緑。
+  // どちらの扇も180度以下なので、360度の全円や大弧フラグの境目で崩れない。
+  function paintDial(svg, q) {
+    if (!svg) return;
+    var theta = Math.max(0, Math.min(1, q)) * 360;
+    var key = theta.toFixed(2);
+    if (svg.getAttribute('data-k') === key) return;
+    svg.setAttribute('data-k', key);
+    svg.querySelector('.dial-second').setAttribute('d', sectorPath(0, Math.min(theta, 180)));
+    // 深緑は柿渋の下に描くので、境目に紙色のすき間が出ないよう少し重ねる（満円のときは12時側も）
+    svg.querySelector('.dial-first').setAttribute('d', theta > 180 ? sectorPath(179.6, theta >= 359.9 ? 360.4 : theta) : '');
+  }
+
   var toastTimer = null;
   function toast(msg, ms) {
     var t = $('toast');
@@ -619,7 +695,7 @@ body[data-screen="timer"] .notices{display:flex}
       grid.appendChild(li);
     });
 
-    $('trackHost').outerHTML = TRACK_HTML.replace('class="track"', 'class="track" id="mainTrack"');
+    $('dial').innerHTML = DIAL_HTML;
     $('pauseBtn').innerHTML = ICONS.pause;
     $('resetBtn').innerHTML = ICONS.reset;
     $('fsBtn').innerHTML = ICONS.fs;
@@ -816,6 +892,8 @@ body[data-screen="timer"] .notices{display:flex}
     return {
       e: e,
       time: fmt(rem),
+      q: S.totalMs > 0 ? rem / S.totalMs : 0,
+      toTurn: fmt(rem - S.halfMs),
       p: p,
       second: second,
       paused: S.paused,
@@ -836,7 +914,10 @@ body[data-screen="timer"] .notices{display:flex}
     setText($('phaseLabel'), vm.second ? '後半' : '前半');
     $('pauseNote').hidden = !vm.paused;
     paintClock($('clock'), vm.time);
-    paintTrack($('mainTrack'), vm.p, vm.second);
+    paintDial($('dial').firstChild, vm.q);
+    setText($('subLabel'), vm.second ? '後半' : '折り返しまで');
+    $('subTime').hidden = vm.second;
+    if (!vm.second) paintClock($('subTime'), vm.toTurn);
     var pb = $('pauseBtn');
     var pLabel = vm.paused ? '再開' : '一時停止';
     if (pb.getAttribute('aria-label') !== pLabel) {
@@ -894,7 +975,7 @@ body[data-screen="timer"] .notices{display:flex}
         '<div class="pip-normal">' +
           '<div class="pip-top"><span><span class="pip-phase">前半</span><span class="pip-pause" hidden>停止中</span></span>' +
           '<button class="icon-btn" type="button" data-act="pause" aria-label="一時停止" title="一時停止">' + ICONS.pause + '</button></div>' +
-          '<div class="pip-clock" role="timer"></div>' +
+          '<div class="pip-mid"><div class="pip-dial">' + DIAL_HTML + '</div><div class="pip-clock" role="timer"></div></div>' +
           TRACK_HTML +
         '</div>' +
         '<div class="pip-turn" title="クリックで通常表示に戻る">' +
@@ -911,6 +992,7 @@ body[data-screen="timer"] .notices{display:flex}
       pauseNote: root.querySelector('.pip-pause'),
       btn: root.querySelector('[data-act="pause"]'),
       clock: root.querySelector('.pip-clock'),
+      dial: root.querySelector('.pip-dial svg'),
       track: root.querySelector('.track'),
       qNum: root.querySelector('.pip-q-num'),
       qText: root.querySelector('.pip-q-text'),
@@ -970,6 +1052,7 @@ body[data-screen="timer"] .notices{display:flex}
       }
       paintClock(r.clock, vm.time);
       paintTrack(r.track, vm.p, vm.second);
+      paintDial(r.dial, vm.q);
       if (mode === 'turn') {
         setText(r.qNum, String(vm.pipQ + 1));
         if (r.qText.getAttribute('data-i') !== String(vm.pipQ)) {
