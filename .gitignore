@@ -1,0 +1,6 @@
+# 公開するのは index.html / LICENSE / NOTICE.md のみ
+*
+!.gitignore
+!index.html
+!LICENSE
+!NOTICE.md

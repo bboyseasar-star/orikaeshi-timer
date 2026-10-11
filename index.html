@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>折り返しタイマー</title>
+<style>
+:root{
+  --paper:#F2EEE4;
+  --ink:#1C211E;
+  --ink-sub:#575C57;
+  --rule:#CFC8B8;
+  --first:#2C5A4C;
+  --second:#A8471F;
+  --turn:#E2A72E;
+  --end:#1C211E;
+  --font:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","BIZ UDPGothic","Yu Gothic UI",Meiryo,sans-serif;
+  --ease-up:cubic-bezier(.2,.7,.2,1);
+  --ease-down:cubic-bezier(.4,0,1,1);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased}
+/* 日本語は文節（.ph）単位で折り返す。対応ブラウザでは auto-phrase も併用 */
+body{line-break:strict;word-break:auto-phrase;text-wrap:pretty}
+.ph{display:inline-block}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+[hidden]{display:none !important}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+/* ---------- 画面の切り替え ---------- */
+.screen{position:fixed;inset:0;display:none;flex-direction:column;padding:4vh 4vw}
+body[data-screen="setup"] #setup,
+body[data-screen="timer"] #timer,
+body[data-screen="end"] #end{display:flex}
+
+/* ---------- 共通の文字ボタン ---------- */
+.textbtn{background:transparent;border:0;border-bottom:1px solid currentColor;padding:.35em .1em;min-height:48px;font-size:clamp(16px,2.4vh,22px);font-weight:600;letter-spacing:.06em}
+.icon-btn{width:48px;height:48px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:4px;color:var(--ink-sub);padding:0}
+.icon-btn:hover{background:rgba(28,33,30,.07);color:var(--ink)}
+.icon-btn svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.icon-btn[aria-pressed="true"]{color:var(--ink);background:rgba(28,33,30,.07)}
+
+/* ---------- 設定画面 ---------- */
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:2vw;flex:none;min-height:48px}
+#soundBtn{white-space:nowrap;flex:none}
+.brand{margin:0;font-size:clamp(18px,3vh,28px);font-weight:700;letter-spacing:.12em}
+.setup-body{flex:1;display:flex;flex-direction:column;justify-content:center;justify-content:safe center;gap:3.2vh;width:100%;max-width:1400px;margin:0 auto;min-height:0}
+.setup-label{margin:0;font-size:clamp(15px,2.4vh,24px);color:var(--ink-sub);letter-spacing:.3em;font-weight:600}
+.presets{display:flex;flex-wrap:wrap;gap:1vh 1.6vw}
+.preset{background:transparent;border:0;border-bottom:2px solid var(--ink);border-radius:2px;min-height:max(64px,11vh);padding:0 .45em;font-size:clamp(28px,6.4vh,72px);font-weight:600;line-height:1;display:inline-flex;align-items:center;justify-content:center;padding-top:.1em;transition:background-color .18s,color .18s}
+.preset small{margin-left:.08em;font-size:.38em;font-weight:600;letter-spacing:.05em}
+.preset:hover{background:rgba(28,33,30,.06)}
+.preset[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.custom{display:flex;align-items:baseline;gap:.6em;font-size:clamp(17px,2.8vh,28px);font-weight:600}
+.custom label{color:var(--ink-sub);letter-spacing:.12em}
+.custom input{width:2.6em;font:inherit;font-size:clamp(30px,6vh,64px);font-weight:600;text-align:center;color:var(--ink);background:transparent;border:0;border-bottom:2px solid var(--ink);border-radius:0;padding:0 .1em;font-variant-numeric:tabular-nums}
+.custom input:focus{outline:none;border-bottom-color:var(--first);background:rgba(44,90,76,.06)}
+.custom input[aria-invalid="true"]{border-bottom-style:dashed}
+.custom .unit{font-size:clamp(20px,3.4vh,34px)}
+.setup-info{display:flex;flex-wrap:wrap;gap:.5em 2.4em;align-items:baseline;min-height:1.6em;font-size:clamp(15px,2.3vh,22px)}
+.half-preview{color:var(--ink-sub);font-weight:600;letter-spacing:.06em}
+.half-preview b{color:var(--ink);font-size:1.25em;margin-left:.3em}
+.hint{margin:0;color:var(--ink-sub)}
+.setup-foot{display:flex;justify-content:flex-end;align-items:center;gap:2vw}
+.start{background:var(--ink);color:var(--paper);border:0;border-radius:2px;font-size:clamp(22px,4.4vh,44px);font-weight:700;letter-spacing:.12em;padding:.42em 1.3em .46em;min-height:64px}
+.start:hover{background:#2b322e}
+.start:disabled{background:var(--rule);color:var(--ink-sub);cursor:not-allowed}
+
+/* ---------- タイマー画面 ---------- */
+.timer-head{display:flex;justify-content:space-between;align-items:flex-start;gap:2vw}
+.phase{display:flex;align-items:baseline;gap:1.2em}
+.phase-label{font-size:4.5vh;font-weight:700;letter-spacing:.3em;color:var(--first);padding-bottom:.5vh;border-bottom:.5vh solid currentColor;transition:color 400ms}
+.is-second .phase-label{color:var(--second)}
+.pause-note{font-size:2.6vh;color:var(--ink-sub);font-weight:600;letter-spacing:.12em}
+.tools{display:flex;gap:6px}
+.clock{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;font-size:min(30vw,58vh);line-height:.9;letter-spacing:-.02em;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;transition:opacity .3s}
+.clock.is-long{font-size:min(24vw,58vh)}
+.clock-t{display:inline-block;white-space:nowrap}
+.colon{display:inline-block;position:relative;width:max(3px,.058em);height:.72em;margin:0 .09em;vertical-align:baseline}
+.colon i{position:absolute;left:0;width:max(3px,.058em);height:max(3px,.058em);border-radius:50%;background:var(--ink-sub)}
+.colon i:first-child{bottom:.47em}
+.colon i:last-child{bottom:.15em}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.is-paused .clock{opacity:.42}
+
+/* ---------- 往復の帯 ---------- */
+.track{position:relative;height:1.6vh;margin:5.5vh 0 2.4vh;flex:none}
+.track-line{position:absolute;inset:0;background:var(--rule);overflow:hidden}
+.fill{position:absolute;top:0;bottom:0;width:0}
+.fill-a{left:0;background:var(--first);transition:background-color 400ms,opacity 400ms}
+.fill-b{left:50%;background:var(--second)}
+.track.is-second .fill-a{background:var(--second);opacity:.38}
+.notch{position:absolute;left:50%;top:-2vh;bottom:-2vh;width:4px;margin-left:-2px;background:var(--ink)}
+.notch-label{position:absolute;left:50%;bottom:calc(100% + 2.4vh);transform:translateX(-50%);font-size:clamp(12px,2vh,20px);font-weight:700;color:var(--ink-sub);line-height:1}
+.marker{position:absolute;left:0;top:-.9vh;bottom:-.9vh;width:2px;margin-left:-1px;background:var(--ink)}
+
+/* ---------- 折り返し画面 ---------- */
+.turn{position:fixed;inset:0;z-index:10;overflow:hidden;background:var(--turn);color:var(--ink);display:flex;flex-direction:column;padding:5vh 5vw 3.5vh;cursor:pointer;
+  transform:translateY(100%);visibility:hidden;transition:transform 320ms var(--ease-down),visibility 0s linear 320ms}
+.turn.is-open{transform:none;visibility:visible;transition:transform 480ms var(--ease-up),visibility 0s}
+.turn-head{display:flex;justify-content:space-between;align-items:flex-start;gap:4vw}
+.turn-title{margin:0;font-size:min(7vw,9vh);font-weight:800;line-height:1.1;letter-spacing:.04em}
+.turn-sub{margin:1.6vh 0 0;font-size:min(2.6vw,3.8vh);font-weight:600;line-height:1.4}
+.turn-rest{margin:0;text-align:right;white-space:nowrap;font-size:min(2.4vw,3.6vh);font-weight:700;letter-spacing:.2em}
+.turn-rest b{display:block;font-size:min(5vw,7.4vh);letter-spacing:-.01em;font-weight:600;line-height:1.1}
+.turn-rule{border:0;border-top:2px solid var(--ink);margin:3vh 0 2.6vh;flex:none}
+.qgrid{flex:1;min-height:0;margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,auto);grid-auto-flow:column;column-gap:5vw;row-gap:3.4vh;align-content:start}
+.q{display:flex;gap:.65em;align-items:baseline;font-size:min(2.8vw,4.4vh);line-height:1.5;font-weight:600;opacity:0;transform:translateY(.5em)}
+.turn.is-open .q{opacity:1;transform:none;transition:opacity 420ms ease-out,transform 420ms var(--ease-up);transition-delay:calc(220ms + var(--i) * 70ms)}
+.q-num{flex:none;min-width:.9em;font-size:1.55em;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.turn-foot{display:flex;align-items:center;gap:2.4vw;margin-top:1.6vh;flex:none}
+.turn-line{flex:1;height:2px;background:rgba(28,33,30,.2);position:relative;overflow:hidden}
+.turn-line span{position:absolute;inset:0;background:var(--ink);transform-origin:left center}
+.turn-paused{font-size:clamp(14px,2.2vh,20px);font-weight:600;color:var(--ink)}
+.turn .textbtn{color:var(--ink)}
+
+/* ---------- 終了画面 ---------- */
+/* 明るい教室のプロジェクターでは黒が灰色に浮いて文字のコントラストが落ちるため、
+   文字量の多い本文は紙地＋墨文字。終わりの合図は上部の墨の帯で示す。 */
+.end{padding:0;background:var(--paper);color:var(--ink);overflow:hidden}
+.end-band{flex:none;display:flex;justify-content:space-between;align-items:baseline;gap:2vw;background:var(--end);color:var(--paper);padding:2vh 4vw 2.2vh}
+.end-title{margin:0;font-size:min(5.6vw,8.6vh);font-weight:800;letter-spacing:.24em;line-height:1.1}
+.end-sub{margin:0;font-size:min(1.9vw,3vh);font-weight:600;opacity:.75;letter-spacing:.12em;white-space:nowrap}
+.end-body{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;justify-content:safe center;gap:3.2vh;padding:2.8vh 4vw 0}
+.end-label{margin:0 0 1.2vh;font-size:min(1.9vw,3.1vh);font-weight:700;color:var(--ink-sub);letter-spacing:.24em}
+.abc{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,1fr);border-top:2px solid var(--ink)}
+.abc li{display:flex;align-items:center;gap:.45em;padding:1.4vh 1.4vw 1.2vh;font-size:min(2.6vw,4.2vh);font-weight:700;line-height:1.3}
+.abc li+li{border-left:1px solid var(--rule)}
+.abc b{flex:none;font-size:2.1em;font-weight:800;line-height:1}
+.tips{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,1fr);border-top:2px solid var(--ink)}
+.tips li{padding:1.6vh 1.6vw 0;display:flex;flex-direction:column;gap:.8vh}
+.tips li+li{border-left:1px solid var(--rule)}
+.tip-head{display:flex;align-items:baseline;gap:.5em;font-size:min(2.9vw,4.6vh);font-weight:800;line-height:1.2}
+.tip-num{font-size:1.5em;font-variant-numeric:tabular-nums}
+.tip-text{margin:0;font-size:min(2.5vw,4.2vh);font-weight:500;line-height:1.5}
+.tip-text strong{font-weight:800}
+.end-actions{flex:none;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:1vh 3vw;padding:.6vh 4vw 1.4vh}
+.end .textbtn{color:var(--ink-sub);font-size:clamp(15px,2.3vh,22px);font-weight:600;min-height:44px}
+.end .textbtn:hover{color:var(--ink)}
+body[data-screen="end"] #end{animation:fadein 600ms ease-out}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+
+/* ---------- 控えめなお知らせ ---------- */
+.toast{position:fixed;left:50%;bottom:13vh;z-index:30;transform:translateX(-50%);max-width:90vw;background:var(--ink);color:var(--paper);padding:.7em 1.2em;border-radius:2px;font-size:clamp(14px,2.2vh,20px);line-height:1.5;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.is-show{opacity:1}
+
+/* ---------- コンパクト表示（小窓） ---------- */
+.pip{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);overflow:hidden}
+.pip-normal{flex:1;min-height:0;display:flex;flex-direction:column;padding:6px 12px 8px}
+.pip-top{display:flex;justify-content:space-between;align-items:center;height:36px;flex:none}
+.pip-phase{font-size:14px;font-weight:700;letter-spacing:.3em;color:var(--first)}
+.pip.is-second .pip-phase{color:var(--second)}
+.pip-pause{font-size:12px;color:var(--ink-sub);font-weight:600;margin-left:.6em;letter-spacing:.1em}
+.pip .icon-btn{width:36px;height:36px}
+.pip .icon-btn svg{width:20px;height:20px}
+.pip-clock{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;font-size:min(34vw,46vh);line-height:.9;font-weight:600;letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.pip-clock.is-long{font-size:min(27vw,46vh)}
+.pip.is-paused .pip-clock{opacity:.42}
+.pip .track{height:6px;margin:10px 4px 8px}
+.pip .notch{top:-6px;bottom:-6px;width:3px;margin-left:-1.5px}
+.pip .notch-label{display:none}
+.pip .marker{top:-4px;bottom:-4px}
+.pip-turn,.pip-end{display:none;flex:1;flex-direction:column;padding:10px 14px}
+.pip[data-mode="turn"]{background:var(--turn);cursor:pointer}
+.pip[data-mode="turn"] .pip-normal,.pip[data-mode="end"] .pip-normal{display:none}
+.pip[data-mode="turn"] .pip-turn{display:flex}
+.pip[data-mode="end"]{background:var(--end);color:var(--paper)}
+.pip[data-mode="end"] .pip-end{display:flex;align-items:center;justify-content:center}
+.pip-turn-title{margin:0;font-size:min(6.2vw,11vh);font-weight:800;letter-spacing:.04em;border-bottom:2px solid var(--ink);padding-bottom:4px;flex:none}
+.pip-q{flex:1;min-height:0;margin:0;display:flex;gap:.45em;align-items:center;font-size:min(7vw,12.5vh);font-weight:700;line-height:1.35}
+.pip-q-num{font-size:1.4em;font-weight:800;flex:none;font-variant-numeric:tabular-nums}
+.pip-rest{margin:0;text-align:right;font-size:min(5vw,9vh);font-weight:700;letter-spacing:.12em;flex:none}
+.pip-rest b{font-weight:600;letter-spacing:0;margin-left:.3em;font-variant-numeric:tabular-nums}
+.pip[data-mode="end"] .pip-end{flex-direction:column;gap:6px;text-align:center}
+.pip-end-title{margin:0;font-size:min(14vw,26vh);font-weight:800;letter-spacing:.2em;padding-left:.2em;line-height:1.15}
+.pip-end-sub{margin:0;font-size:min(5.4vw,10vh);font-weight:600;opacity:.85;letter-spacing:.04em}
+@media (max-height:159px){
+  .pip .pip-top,.pip .track{display:none}
+  .pip-normal{padding:4px 8px}
+  .pip-clock{font-size:min(34vw,80vh)}
+  .pip-clock.is-long{font-size:min(27vw,80vh)}
+  .pip-turn-title,.pip-rest{display:none}
+  .pip-end-sub{font-size:min(5.4vw,16vh)}
+}
+
+/* ---------- 狭い画面（幅800px以下） ---------- */
+@media (max-width:800px){
+  .screen{padding:16px 16px 20px}
+  .brand{font-size:clamp(16px,4.6vw,22px);letter-spacing:.08em}
+  .setup-body{gap:clamp(12px,2.6vh,28px)}
+  .presets{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .preset{min-height:64px;font-size:clamp(24px,7vw,40px);padding:0 .2em}
+  .custom{font-size:clamp(16px,4vw,22px)}
+  .custom input{font-size:clamp(28px,8vw,44px)}
+  .custom .unit{font-size:clamp(18px,4.6vw,26px)}
+  .setup-info{font-size:clamp(14px,3.8vw,18px);gap:.4em 1.4em}
+  .start{font-size:clamp(20px,6vw,30px);padding:.4em 1.1em .44em}
+  .phase-label{font-size:clamp(20px,6vw,34px)}
+  .pause-note{font-size:clamp(13px,3.6vw,18px)}
+  .tools{gap:2px}
+  .turn{padding:20px 16px 16px}
+  .turn-head{flex-wrap:wrap;gap:8px 16px}
+  .turn-title{font-size:clamp(22px,7.4vw,44px)}
+  .turn-sub{font-size:clamp(13px,3.8vw,20px);margin-top:6px}
+  .turn-rest{font-size:clamp(13px,3.6vw,18px)}
+  .turn-rest{text-align:left;display:flex;align-items:baseline;gap:.6em}
+  .turn-rest b{display:inline-block;font-size:clamp(24px,8vw,40px)}
+  .turn-rule{margin:12px 0}
+  .qgrid{grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row;row-gap:clamp(6px,1.6vh,16px)}
+  .q{font-size:clamp(15px,4.4vw,24px);line-height:1.45}
+  .turn-foot{gap:12px;margin-top:10px}
+  #end{padding:0}
+  .end-band{padding:14px 16px;flex-wrap:wrap}
+  .end-title{font-size:clamp(26px,8vw,44px)}
+  .end-sub{font-size:clamp(12px,3.4vw,16px)}
+  .end-body{gap:clamp(14px,3vh,28px);padding:14px 16px 0}
+  .end-label{font-size:clamp(13px,3.6vw,18px);margin-bottom:8px}
+  .abc li{flex-direction:column;align-items:flex-start;gap:4px;padding:10px 8px;font-size:clamp(15px,4.2vw,22px)}
+  .abc b{font-size:clamp(30px,9vw,48px)}
+  .tips{grid-template-columns:1fr}
+  .tips li{padding:10px 0;gap:4px}
+  .tips li+li{border-left:0;border-top:1px solid var(--rule)}
+  .tip-head{font-size:clamp(17px,5vw,26px)}
+  .tip-text{font-size:clamp(15px,4.4vw,22px);line-height:1.5}
+  .end-actions{padding:10px 16px 14px}
+}
+
+/* ---------- 動きを減らす設定 ---------- */
+@media (prefers-reduced-motion: reduce){
+  .turn{transform:none;opacity:0;transition:opacity 200ms linear,visibility 0s linear 200ms}
+  .turn.is-open{opacity:1;transform:none;transition:opacity 200ms linear,visibility 0s}
+  .q,.turn.is-open .q{transform:none;opacity:1;transition:none}
+  .fill-a,.phase-label,.preset{transition:none}
+  body[data-screen="end"] #end{animation:none}
+}
+</style>
+</head>
+<body data-screen="setup">
+
+<!-- 設定画面 -->
+<main id="setup" class="screen" aria-label="設定">
+  <header class="topbar">
+    <h1 class="brand">折り返しタイマー</h1>
+    <button id="soundBtn" class="textbtn" type="button" aria-pressed="true">音 <span id="soundState">オン</span></button>
+  </header>
+  <section class="setup-body">
+    <p class="setup-label" id="presetLabel">全体の時間</p>
+    <div class="presets" id="presets" role="group" aria-labelledby="presetLabel"></div>
+    <div class="custom">
+      <label for="minInput">自由入力</label>
+      <input id="minInput" class="num" type="text" inputmode="numeric" autocomplete="off" aria-describedby="setupHint">
+      <span class="unit">分</span>
+    </div>
+    <div class="setup-info">
+      <span class="half-preview" id="halfPreview">折り返し<b class="num" id="halfValue">7:30</b></span>
+      <p class="hint" id="setupHint" aria-live="polite"></p>
+    </div>
+  </section>
+  <footer class="setup-foot">
+    <button id="startBtn" class="start" type="button">スタート <span aria-hidden="true">→</span></button>
+  </footer>
+</main>
+
+<!-- タイマー画面 -->
+<main id="timer" class="screen" aria-label="タイマー">
+  <header class="timer-head">
+    <div class="phase">
+      <span class="phase-label" id="phaseLabel">前半</span>
+      <span class="pause-note" id="pauseNote" hidden>一時停止中</span>
+    </div>
+    <div class="tools">
+      <button class="icon-btn" id="pauseBtn" type="button" aria-label="一時停止" title="一時停止（Space）"></button>
+      <button class="icon-btn" id="resetBtn" type="button" aria-label="リセット" title="リセット（2回押し）"></button>
+      <button class="icon-btn" id="fsBtn" type="button" aria-label="全画面" title="全画面（F）"></button>
+      <button class="icon-btn" id="pipBtn" type="button" aria-label="コンパクト表示" title="コンパクト表示（小窓をほかのアプリの上に表示）" aria-pressed="false"></button>
+    </div>
+  </header>
+  <div class="clock" id="clock" role="timer" aria-live="off"></div>
+  <div id="trackHost"></div>
+</main>
+
+<!-- 折り返し画面 -->
+<section id="turn" class="turn" role="dialog" aria-label="実行確認・実行調整" aria-hidden="true">
+  <div class="turn-head">
+    <div>
+      <h2 class="turn-title">実行確認・実行調整</h2>
+      <p class="turn-sub"><span class="ph">1つ選んで、</span><span class="ph">後半の自分を</span><span class="ph">調整しよう</span></p>
+    </div>
+    <p class="turn-rest">後半<b class="num" id="turnRest"></b></p>
+  </div>
+  <hr class="turn-rule">
+  <ol class="qgrid" id="qgrid"></ol>
+  <div class="turn-foot">
+    <span class="turn-paused" id="turnPaused" hidden>一時停止中</span>
+    <div class="turn-line" aria-hidden="true"><span id="turnLine"></span></div>
+    <button class="textbtn" type="button" id="extendBtn" data-extend>表示を＋30秒</button>
+    <button class="textbtn" type="button" id="backBtn">戻る</button>
+  </div>
+</section>
+
+<!-- 終了画面 -->
+<main id="end" class="screen end" aria-label="振り返り">
+  <header class="end-band">
+    <h2 class="end-title">振り返り</h2>
+    <p class="end-sub" id="endSub"></p>
+  </header>
+  <div class="end-body">
+    <section aria-labelledby="abcLabel">
+      <p class="end-label" id="abcLabel">目標に照らして自己評価</p>
+      <ul class="abc">
+        <li><b>A</b><span><span class="ph">目標を十分に</span><span class="ph">達成できた</span></span></li>
+        <li><b>B</b><span><span class="ph">おおむね</span><span class="ph">達成できた</span></span></li>
+        <li><b>C</b><span><span class="ph">達成</span><span class="ph">できなかった</span></span></li>
+      </ul>
+    </section>
+    <section aria-labelledby="tipsLabel">
+      <p class="end-label" id="tipsLabel">いい振り返りの3要素</p>
+      <ol class="tips">
+        <li><div class="tip-head"><span class="tip-num">1</span><span>成果・課題</span></div>
+          <p class="tip-text"><span class="ph">何ができて、</span><span class="ph">何が</span><span class="ph">できなかったか。</span><span class="ph"><strong>具体的に</strong>書く。</span></p></li>
+        <li><div class="tip-head"><span class="tip-num">2</span><span>原因帰属</span></div>
+          <p class="tip-text"><span class="ph">なぜできた／</span><span class="ph">できなかったか。</span><span class="ph"><strong>自分のやり方</strong>を</span><span class="ph">振り返る。</span></p></li>
+        <li><div class="tip-head"><span class="tip-num">3</span><span>適用</span></div>
+          <p class="tip-text"><span class="ph">うまくいったことも、</span><span class="ph">いかなかったことも</span><span class="ph">生かして、</span><span class="ph"><strong>次の時間</strong></span><span class="ph"><strong>どうするか</strong>。</span></p></li>
+      </ol>
+    </section>
+  </div>
+  <div class="end-actions">
+    <button class="textbtn" type="button" id="againBtn">もう一度</button>
+    <button class="textbtn" type="button" id="backSetupBtn">設定に戻る</button>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ===== 定数 ===== */
+  var PRESETS = [10, 15, 20, 25, 30, 40];
+  var MIN_MINUTES = 1;
+  var MAX_MINUTES = 120;
+  var DEFAULT_MINUTES = 15;
+  var TICK_MS = 250;
+  var TURN_SHOW_MS = 30000;   // 折り返し画面を出しておく時間
+  var TURN_EXTEND_MS = 30000; // ＋30秒
+  var PIP_TURN_MS = 30000;    // 小窓の折り返し表示の長さ
+  var RESET_ARM_MS = 4000;    // リセットの2回押し受付時間（案内の表示時間と同じ）
+  var TOAST_MS = 5000;
+  var STORE_KEY = 'oritimer.v1';
+  var MSG_PIP = 'このブラウザ・この開き方では小窓表示が使えません';
+  var MSG_FS = 'ブラウザの全画面（F11 / Chromebookは全画面キー）をご利用ください';
+  var QUESTIONS = [
+    // 「|」は折り返してよい文節の区切り（表示されない）
+    '目標から|ずれていない？',
+    '今のやり方で|目標達成|できそう？',
+    '時間配分は|大丈夫？',
+    '「何が分かるor|分からないか」が|分かってる？',
+    'うまくいかない時に、|別の方法を|試してる？',
+    '集中できる|環境を|作れてる？'
+  ];
+  function phraseHTML(q) {
+    return q.split('|').map(function (p) { return '<span class="ph">' + p + '</span>'; }).join('');
+  }
+  var ICONS = {
+    pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5.5v13M15 5.5v13"/></svg>',
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5l11 6.5-11 6.5z"/></svg>',
+    reset: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.05-4.95"/><path d="M5 4.5V9h4.5"/></svg>',
+    fs: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15"/></svg>',
+    fsExit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5V9H4.5M19.5 9H15V4.5M15 19.5V15h4.5M4.5 15H9v4.5"/></svg>',
+    pip: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="1"/><rect x="11.5" y="11.5" width="6.5" height="5" rx=".5"/></svg>'
+  };
+  var TRACK_HTML =
+    '<div class="track" aria-hidden="true">' +
+      '<div class="track-line"><span class="fill fill-a"></span><span class="fill fill-b"></span></div>' +
+      '<span class="notch"></span><span class="notch-label">折</span><span class="marker"></span>' +
+    '</div>';
+
+  /* ===== 倍速デバッグ（?speed=60 など。既定は等速） ===== */
+  var SPEED = (function () {
+    try {
+      var v = Number(new URLSearchParams(window.location.search).get('speed'));
+      return (isFinite(v) && v >= 1 && v <= 600) ? v : 1;
+    } catch (e) { return 1; }
+  })();
+  function vnow() { return Date.now() * SPEED; }
+
+  /* ===== 保存（使えなくても動く） ===== */
+  var memStore = null;
+  function loadSettings() {
+    var raw = null;
+    try { raw = window.localStorage.getItem(STORE_KEY); } catch (e) { raw = memStore; }
+    var out = { minutes: DEFAULT_MINUTES, sound: true };
+    try {
+      var o = raw ? JSON.parse(raw) : null;
+      if (o && Number.isInteger(o.minutes) && o.minutes >= MIN_MINUTES && o.minutes <= MAX_MINUTES) out.minutes = o.minutes;
+      if (o && typeof o.sound === 'boolean') out.sound = o.sound;
+    } catch (e) { /* 壊れた値は無視 */ }
+    return out;
+  }
+  function saveSettings() {
+    var s = JSON.stringify({ minutes: S.minutes, sound: S.sound });
+    memStore = s;
+    try { window.localStorage.setItem(STORE_KEY, s); } catch (e) { /* 保存できなくても続行 */ }
+  }
+
+  /* ===== 状態（唯一の真実） ===== */
+  var init = loadSettings();
+  var S = {
+    screen: 'setup',
+    minutes: init.minutes,
+    sound: init.sound,
+    totalMs: 0,
+    halfMs: 0,
+    startRef: 0,          // 経過0の時刻（仮想時刻）
+    paused: false,
+    pausedElapsed: 0,
+    turnFired: false,
+    turnShownAt: 0,       // 折り返しを出した経過時間
+    overlayOpen: false,
+    overlayUntil: 0,      // 経過時間ベース（一時停止で自然に止まる）
+    overlaySpan: TURN_SHOW_MS,
+    pipTurnDismissed: false,
+    pipTurnSpan: PIP_TURN_MS  // 小窓の折り返し表示の長さ（表示を＋30秒で延びる）
+  };
+
+  function elapsed() {
+    if (S.paused) return S.pausedElapsed;
+    var e = vnow() - S.startRef;
+    if (e < 0) e = 0;
+    if (e > S.totalMs) e = S.totalMs;
+    return e;
+  }
+
+  /* ===== 表示用ヘルパ ===== */
+  function fmt(ms) {
+    var sec = Math.ceil(Math.max(0, ms) / 1000);
+    var m = Math.floor(sec / 60);
+    var s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function $(id) { return document.getElementById(id); }
+  function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
+  var TIME_INNER =
+    '<span class="clock-t" aria-hidden="true"><span class="mm"></span>' +
+    '<span class="colon"><i></i><i></i></span><span class="ss"></span></span><span class="sr"></span>';
+  function spoken(text) {
+    var parts = text.split(':');
+    var m = Number(parts[0]);
+    var sec = Number(parts[1]);
+    if (m === 0) return sec + '秒';
+    return sec === 0 ? m + '分' : m + '分' + sec + '秒';
+  }
+  // 「mm:ss」を、数字＋CSSの丸2つで描く（タイマー・折り返し・小窓で共通）
+  function paintClock(el, text) {
+    if (!el || el.getAttribute('data-t') === text) return;
+    if (!el.querySelector('.clock-t')) el.innerHTML = TIME_INNER;
+    el.setAttribute('data-t', text);
+    var parts = text.split(':');
+    el.querySelector('.mm').textContent = parts[0];
+    el.querySelector('.ss').textContent = parts[1];
+    var say = spoken(text);
+    el.querySelector('.sr').textContent = say;
+    el.setAttribute('aria-label', say);
+    el.classList.toggle('is-long', parts[0].length >= 3);
+  }
+  function paintTrack(track, p, second) {
+    if (!track) return;
+    var a = Math.min(p, 0.5) * 100;
+    var b = Math.max(0, p - 0.5) * 100;
+    track.querySelector('.fill-a').style.width = a + '%';
+    track.querySelector('.fill-b').style.width = b + '%';
+    track.querySelector('.marker').style.left = (p * 100) + '%';
+    track.classList.toggle('is-second', second);
+  }
+
+  var toastTimer = null;
+  function toast(msg, ms) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('is-show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('is-show'); }, ms || TOAST_MS);
+  }
+
+  /* ===== 音（Web Audio でその場生成） ===== */
+  var actx = null;
+  var master = null;
+  function ensureAudio() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!actx) {
+        actx = new AC();
+        master = actx.createGain();
+        master.gain.value = 0.9;
+        master.connect(actx.destination);
+      }
+      if (actx.state === 'suspended') actx.resume().catch(function () {});
+    } catch (e) { actx = null; master = null; }
+  }
+  function tone(freq, t0, dur, peak) {
+    var o = actx.createOscillator();
+    var g = actx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g);
+    g.connect(master);
+    o.start(t0);
+    o.stop(t0 + dur + 0.05);
+  }
+  function bell(freq, t0, dur, peak) {
+    tone(freq, t0, dur, peak);
+    tone(freq * 2, t0, dur * 0.5, peak * 0.18); // かすかな倍音
+  }
+  function playSound(kind) {
+    if (!S.sound || !actx) return;
+    try {
+      if (actx.state === 'suspended') actx.resume().catch(function () {});
+      var t = actx.currentTime + 0.05;
+      if (kind === 'turn') {          // やわらかい上行2音（約1.9秒）
+        bell(784, t, 1.5, 0.22);      // G5
+        bell(1047, t + 0.22, 1.6, 0.2); // C6
+      } else {                        // 終了：下行3音
+        bell(1047, t, 1.2, 0.2);      // C6
+        bell(784, t + 0.34, 1.2, 0.2);  // G5
+        bell(523, t + 0.68, 1.9, 0.24); // C5
+      }
+    } catch (e) { /* 音が出なくても表示は続ける */ }
+  }
+
+  /* ===== 画面の構築 ===== */
+  function buildStatic() {
+    var presets = $('presets');
+    PRESETS.forEach(function (n) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'preset num';
+      b.setAttribute('data-min', String(n));
+      b.setAttribute('aria-pressed', 'false');
+      b.innerHTML = '<span>' + n + '<small>分</small></span>';
+      b.addEventListener('click', function () {
+        $('minInput').value = String(n);
+        onMinutesChanged();
+      });
+      presets.appendChild(b);
+    });
+
+    var grid = $('qgrid');
+    QUESTIONS.forEach(function (q, i) {
+      var li = document.createElement('li');
+      li.className = 'q';
+      li.style.setProperty('--i', String(i));
+      var num = document.createElement('span');
+      num.className = 'q-num';
+      num.textContent = String(i + 1);
+      var tx = document.createElement('span');
+      tx.innerHTML = phraseHTML(q); // 定数の文言のみ（外部入力なし）
+      li.appendChild(num);
+      li.appendChild(tx);
+      grid.appendChild(li);
+    });
+
+    $('trackHost').outerHTML = TRACK_HTML.replace('class="track"', 'class="track" id="mainTrack"');
+    $('pauseBtn').innerHTML = ICONS.pause;
+    $('resetBtn').innerHTML = ICONS.reset;
+    $('fsBtn').innerHTML = ICONS.fs;
+    $('pipBtn').innerHTML = ICONS.pip;
+    if (!('documentPictureInPicture' in window)) $('pipBtn').hidden = true;
+  }
+
+  /* ===== 設定画面 ===== */
+  function toHalfWidthDigits(s) {
+    return String(s).replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+  }
+  function parseMinutes(raw) {
+    var s = toHalfWidthDigits(raw).trim();
+    if (!/^\d+$/.test(s)) return NaN; // 7.5 / 1e2 / -5 などは不可
+    if (s.length > 4) return NaN;
+    var n = Number(s);
+    return (n >= MIN_MINUTES && n <= MAX_MINUTES) ? n : NaN;
+  }
+  function sanitizeInput() {
+    var el = $('minInput');
+    // 全角数字だけ半角に直す。それ以外の文字は消さずに残し、判定で不可にする
+    var v = toHalfWidthDigits(el.value);
+    if (el.value !== v) el.value = v;
+  }
+  function onMinutesChanged() {
+    var el = $('minInput');
+    var n = parseMinutes(el.value);
+    var ok = !isNaN(n);
+    var hint = '';
+    if (!ok) hint = el.value.trim() === '' ? '何分か入れてください' : '1〜120 の整数（半角数字）で入れてください';
+    setText($('setupHint'), hint);
+    el.setAttribute('aria-invalid', ok ? 'false' : 'true');
+    $('startBtn').disabled = !ok;
+    $('halfPreview').hidden = !ok;
+    if (ok) setText($('halfValue'), fmt(n * 30000));
+    var btns = document.querySelectorAll('.preset');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].setAttribute('aria-pressed', String(ok && Number(btns[i].getAttribute('data-min')) === n));
+    }
+    return ok ? n : NaN;
+  }
+  function paintSound() {
+    $('soundBtn').setAttribute('aria-pressed', String(S.sound));
+    setText($('soundState'), S.sound ? 'オン' : 'オフ');
+  }
+
+  /* ===== 流れ ===== */
+  function setScreen(name) {
+    S.screen = name;
+    document.body.setAttribute('data-screen', name);
+  }
+
+  function start(minutes) {
+    if (!Number.isInteger(minutes) || minutes < MIN_MINUTES || minutes > MAX_MINUTES) return;
+    ensureAudio();
+    S.minutes = minutes;
+    saveSettings();
+    S.totalMs = minutes * 60000;
+    S.halfMs = S.totalMs / 2;
+    S.startRef = vnow();
+    S.paused = false;
+    S.pausedElapsed = 0;
+    S.turnFired = false;
+    S.turnShownAt = 0;
+    S.pipTurnDismissed = false;
+    closeOverlay(true);
+    setScreen('timer');
+    schedule();
+    render();
+  }
+
+  // 裏タブでも折り返し・終了が遅れにくいよう、その時刻に1回だけ tick を予約する。
+  // 発火時は tick() が Date.now 基準で再判定するので、二重発火しない。
+  var turnTimeout = null;
+  var endTimeout = null;
+  function clearSchedule() {
+    clearTimeout(turnTimeout);
+    clearTimeout(endTimeout);
+    turnTimeout = endTimeout = null;
+  }
+  function schedule() {
+    clearSchedule();
+    if (S.screen !== 'timer' || S.paused) return;
+    var e = elapsed();
+    if (!S.turnFired) turnTimeout = setTimeout(tick, Math.max(0, (S.halfMs - e) / SPEED) + 15);
+    endTimeout = setTimeout(tick, Math.max(0, (S.totalMs - e) / SPEED) + 15);
+  }
+
+  function togglePause() {
+    if (S.screen !== 'timer') return;
+    if (S.paused) {
+      S.startRef = vnow() - S.pausedElapsed;
+      S.paused = false;
+      schedule();
+    } else {
+      S.pausedElapsed = elapsed();
+      S.paused = true;
+      clearSchedule();
+    }
+    render();
+  }
+
+  function openOverlay(e) {
+    S.overlayOpen = true;
+    S.overlaySpan = TURN_SHOW_MS;
+    S.overlayUntil = e + TURN_SHOW_MS;
+    var t = $('turn');
+    t.setAttribute('aria-hidden', 'false');
+    t.classList.add('is-open');
+  }
+  function extendOverlay() {
+    if (!S.overlayOpen) return;
+    S.overlayUntil += TURN_EXTEND_MS;
+    S.overlaySpan += TURN_EXTEND_MS;
+    if (!S.pipTurnDismissed && elapsed() - S.turnShownAt < S.pipTurnSpan) S.pipTurnSpan += TURN_EXTEND_MS;
+    render();
+  }
+  function closeOverlay(silent) {
+    S.overlayOpen = false;
+    var t = $('turn');
+    t.classList.remove('is-open');
+    t.setAttribute('aria-hidden', 'true');
+    if (!silent) render();
+  }
+
+  function finish() {
+    clearSchedule();
+    S.paused = false;
+    S.pausedElapsed = S.totalMs;
+    closeOverlay(true);
+    setText($('endSub'), S.minutes + '分が終わりました');
+    setScreen('end');
+    playSound('end');
+    render();
+  }
+
+  function toSetup() {
+    clearSchedule();
+    closeOverlay(true);
+    closePip();
+    setScreen('setup');
+    $('minInput').value = String(S.minutes);
+    onMinutesChanged();
+  }
+
+  var resetArmedUntil = 0;
+  function requestReset() {
+    var now = Date.now();
+    if (now < resetArmedUntil) {
+      resetArmedUntil = 0;
+      $('toast').classList.remove('is-show');
+      toSetup();
+      return;
+    }
+    resetArmedUntil = now + RESET_ARM_MS;
+    toast('もう一度押すとリセットして設定画面に戻ります', RESET_ARM_MS);
+  }
+
+  /* ===== 毎拍の処理（裏タブでも setInterval で動く） ===== */
+  function tick() {
+    if (S.screen !== 'timer') return;
+    var e = elapsed();
+    if (e >= S.totalMs) { S.turnFired = true; finish(); return; }
+    if (!S.turnFired && e >= S.halfMs) {
+      S.turnFired = true;
+      S.turnShownAt = e;
+      S.pipTurnDismissed = false;
+      S.pipTurnSpan = PIP_TURN_MS;
+      openOverlay(e);
+      playSound('turn');
+    }
+    if (S.overlayOpen && e >= S.overlayUntil) closeOverlay(true);
+    render();
+  }
+
+  /* ===== 描画（本体と小窓を同じ状態から） ===== */
+  function viewModel() {
+    var e = S.screen === 'end' ? S.totalMs : elapsed();
+    var rem = S.totalMs - e;
+    var p = S.totalMs > 0 ? e / S.totalMs : 0;
+    var second = S.turnFired || (S.totalMs > 0 && e >= S.halfMs);
+    var sinceTurn = e - S.turnShownAt;
+    return {
+      e: e,
+      time: fmt(rem),
+      p: p,
+      second: second,
+      paused: S.paused,
+      pipTurn: S.screen === 'timer' && S.turnFired && !S.pipTurnDismissed && sinceTurn < S.pipTurnSpan,
+      // 表示時間を6問で均等に割る（30秒なら5秒ずつ、60秒なら10秒ずつ）
+      pipQ: Math.min(QUESTIONS.length - 1, Math.max(0, Math.floor(sinceTurn / (S.pipTurnSpan / QUESTIONS.length))))
+    };
+  }
+
+  function render() {
+    if (S.screen === 'setup') return;
+    var vm = viewModel();
+
+    // 本体
+    var timer = $('timer');
+    timer.classList.toggle('is-second', vm.second);
+    timer.classList.toggle('is-paused', vm.paused);
+    setText($('phaseLabel'), vm.second ? '後半' : '前半');
+    $('pauseNote').hidden = !vm.paused;
+    paintClock($('clock'), vm.time);
+    paintTrack($('mainTrack'), vm.p, vm.second);
+    var pb = $('pauseBtn');
+    var pLabel = vm.paused ? '再開' : '一時停止';
+    if (pb.getAttribute('aria-label') !== pLabel) {
+      pb.innerHTML = vm.paused ? ICONS.play : ICONS.pause;
+      pb.setAttribute('aria-label', pLabel);
+      pb.title = pLabel + '（Space）';
+    }
+
+    if (S.overlayOpen) {
+      paintClock($('turnRest'), vm.time);
+      var frac = Math.max(0, Math.min(1, (S.overlayUntil - vm.e) / S.overlaySpan));
+      $('turnLine').style.transform = 'scaleX(' + frac.toFixed(4) + ')';
+      $('turnPaused').hidden = !vm.paused;
+    }
+
+    renderPip(vm);
+  }
+
+  /* ===== コンパクト表示（Document Picture-in-Picture） ===== */
+  var pip = null; // { win, root, refs, timer }
+
+  async function togglePip() {
+    if (pip) { closePip(); return; }
+    if (!('documentPictureInPicture' in window)) { toast(MSG_PIP); return; }
+    var win = null;
+    try {
+      win = await window.documentPictureInPicture.requestWindow({ width: 320, height: 200 });
+    } catch (err) {
+      toast(MSG_PIP);
+      return;
+    }
+    if (!win) { toast(MSG_PIP); return; }
+    try {
+      buildPip(win);
+    } catch (err) {
+      try { win.close(); } catch (e2) { /* noop */ }
+      pip = null;
+      toast(MSG_PIP);
+    }
+    paintPipBtn();
+    render();
+  }
+
+  function buildPip(win) {
+    var doc = win.document;
+    doc.documentElement.lang = 'ja';
+    doc.title = '折り返しタイマー';
+    var style = doc.createElement('style');
+    var src = document.querySelector('style');
+    style.textContent = src ? src.textContent : '';
+    doc.head.appendChild(style);
+
+    doc.body.innerHTML =
+      '<div class="pip" data-mode="normal">' +
+        '<div class="pip-normal">' +
+          '<div class="pip-top"><span><span class="pip-phase">前半</span><span class="pip-pause" hidden>停止中</span></span>' +
+          '<button class="icon-btn" type="button" data-act="pause" aria-label="一時停止" title="一時停止">' + ICONS.pause + '</button></div>' +
+          '<div class="pip-clock" role="timer"></div>' +
+          TRACK_HTML +
+        '</div>' +
+        '<div class="pip-turn" title="クリックで通常表示に戻る">' +
+          '<p class="pip-turn-title">実行確認・実行調整</p>' +
+          '<p class="pip-q"><span class="pip-q-num"></span><span class="pip-q-text"></span></p>' +
+          '<p class="pip-rest">後半<b></b></p>' +
+        '</div>' +
+        '<div class="pip-end"><p class="pip-end-title">振り返り</p><p class="pip-end-sub">目標に照らしてABCで自己評価</p></div>' +
+      '</div>';
+
+    var root = doc.querySelector('.pip');
+    var refs = {
+      phase: root.querySelector('.pip-phase'),
+      pauseNote: root.querySelector('.pip-pause'),
+      btn: root.querySelector('[data-act="pause"]'),
+      clock: root.querySelector('.pip-clock'),
+      track: root.querySelector('.track'),
+      qNum: root.querySelector('.pip-q-num'),
+      qText: root.querySelector('.pip-q-text'),
+      rest: root.querySelector('.pip-rest b')
+    };
+    refs.btn.addEventListener('click', function (ev) { ev.stopPropagation(); togglePause(); });
+    root.querySelector('.pip-turn').addEventListener('click', function () {
+      S.pipTurnDismissed = true;
+      render();
+    });
+    doc.addEventListener('keydown', function (ev) {
+      if (ev.code === 'Space' || ev.key === ' ') { ev.preventDefault(); togglePause(); }
+    });
+    doc.addEventListener('keyup', function (ev) {
+      if (ev.code === 'Space' || ev.key === ' ') ev.preventDefault();
+    });
+    // 小窓は前面で表示されているので、小窓側でも拍を刻む（本体タブが裏でも止まらない）
+    var timerId = win.setInterval(function () { tick(); }, TICK_MS);
+    win.addEventListener('pagehide', function () {
+      try { win.clearInterval(timerId); } catch (e) { /* noop */ }
+      if (pip && pip.win === win) pip = null;
+      paintPipBtn();
+      tick();
+    });
+    pip = { win: win, root: root, refs: refs };
+  }
+
+  function closePip() {
+    if (!pip) return;
+    var w = pip.win;
+    pip = null;
+    try { w.close(); } catch (e) { /* noop */ }
+    paintPipBtn();
+  }
+
+  function paintPipBtn() {
+    $('pipBtn').setAttribute('aria-pressed', String(!!pip));
+    $('pipBtn').title = pip ? 'コンパクト表示を閉じる' : 'コンパクト表示（小窓をほかのアプリの上に表示）';
+  }
+
+  function renderPip(vm) {
+    if (!pip) return;
+    try {
+      var r = pip.refs;
+      var mode = S.screen === 'end' ? 'end' : (vm.pipTurn ? 'turn' : 'normal');
+      if (pip.root.getAttribute('data-mode') !== mode) pip.root.setAttribute('data-mode', mode);
+      pip.root.classList.toggle('is-second', vm.second);
+      pip.root.classList.toggle('is-paused', vm.paused);
+      setText(r.phase, vm.second ? '後半' : '前半');
+      r.pauseNote.hidden = !vm.paused;
+      var lbl = vm.paused ? '再開' : '一時停止';
+      if (r.btn.getAttribute('aria-label') !== lbl) {
+        r.btn.innerHTML = vm.paused ? ICONS.play : ICONS.pause;
+        r.btn.setAttribute('aria-label', lbl);
+        r.btn.title = lbl;
+      }
+      paintClock(r.clock, vm.time);
+      paintTrack(r.track, vm.p, vm.second);
+      if (mode === 'turn') {
+        setText(r.qNum, String(vm.pipQ + 1));
+        if (r.qText.getAttribute('data-i') !== String(vm.pipQ)) {
+          r.qText.setAttribute('data-i', String(vm.pipQ));
+          r.qText.innerHTML = phraseHTML(QUESTIONS[vm.pipQ]);
+        }
+        paintClock(r.rest, vm.time);
+      }
+    } catch (e) {
+      // 小窓が閉じかけている等。本体の動作は止めない
+      pip = null;
+      paintPipBtn();
+    }
+  }
+
+  /* ===== 全画面 ===== */
+  function toggleFullscreen() {
+    var d = document;
+    try {
+      if (d.fullscreenElement) {
+        var x = d.exitFullscreen();
+        if (x && x.catch) x.catch(function () {});
+        return;
+      }
+      var el = d.documentElement;
+      if (!d.fullscreenEnabled || !el.requestFullscreen) { toast(MSG_FS); return; }
+      var p = el.requestFullscreen();
+      if (p && p.catch) p.catch(function () { toast(MSG_FS); });
+    } catch (e) {
+      toast(MSG_FS);
+    }
+  }
+  function paintFsBtn() {
+    var on = !!document.fullscreenElement;
+    var b = $('fsBtn');
+    b.innerHTML = on ? ICONS.fsExit : ICONS.fs;
+    b.setAttribute('aria-label', on ? '全画面を終了' : '全画面');
+    b.title = (on ? '全画面を終了' : '全画面') + '（F）';
+  }
+
+  /* ===== イベント ===== */
+  function bind() {
+    var input = $('minInput');
+    input.addEventListener('input', function (ev) {
+      if (!ev.isComposing) sanitizeInput();
+      onMinutesChanged();
+    });
+    input.addEventListener('compositionend', function () { sanitizeInput(); onMinutesChanged(); });
+    input.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter' && !ev.isComposing) {
+        ev.preventDefault();
+        var n = onMinutesChanged();
+        if (!isNaN(n)) start(n);
+      }
+    });
+
+    $('soundBtn').addEventListener('click', function () {
+      S.sound = !S.sound;
+      paintSound();
+      saveSettings();
+    });
+    $('startBtn').addEventListener('click', function () {
+      var n = onMinutesChanged();
+      if (!isNaN(n)) start(n);
+    });
+
+    $('pauseBtn').addEventListener('click', function () { togglePause(); });
+    $('resetBtn').addEventListener('click', requestReset);
+    $('fsBtn').addEventListener('click', toggleFullscreen);
+    $('pipBtn').addEventListener('click', function () { togglePip(); });
+
+    $('turn').addEventListener('click', function (ev) {
+      if (ev.target.closest && ev.target.closest('[data-extend]')) { extendOverlay(); return; }
+      closeOverlay(false);
+    });
+
+    $('againBtn').addEventListener('click', function () { start(S.minutes); });
+    $('backSetupBtn').addEventListener('click', toSetup);
+
+    document.addEventListener('keydown', function (ev) {
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      var inInput = ev.target && ev.target.tagName === 'INPUT';
+      if (ev.key === 'Escape') {
+        if (S.overlayOpen) { ev.preventDefault(); closeOverlay(false); }
+        return;
+      }
+      if (inInput) return;
+      if (ev.code === 'Space' || ev.key === ' ') {
+        if (S.screen === 'timer') { ev.preventDefault(); togglePause(); }
+        return;
+      }
+      if (ev.key === 'f' || ev.key === 'F') { ev.preventDefault(); toggleFullscreen(); }
+    });
+    // ボタンにフォーカスがあるとき、Space の keyup でボタンが押されないように
+    document.addEventListener('keyup', function (ev) {
+      if ((ev.code === 'Space' || ev.key === ' ') && S.screen === 'timer') ev.preventDefault();
+    });
+
+    document.addEventListener('fullscreenchange', paintFsBtn);
+    document.addEventListener('visibilitychange', function () { tick(); });
+    window.addEventListener('focus', function () { tick(); });
+  }
+
+  /* ===== 起動 ===== */
+  buildStatic();
+  bind();
+  paintSound();
+  $('minInput').value = String(S.minutes);
+  onMinutesChanged();
+  setInterval(tick, TICK_MS);
+
+  // 倍速デバッグ時だけ、確認用に状態を公開
+  if (SPEED !== 1) {
+    window.__oritimer = { state: S, tick: tick, fmt: fmt, speed: SPEED };
+  }
+})();
+</script>
+</body>
+</html>
