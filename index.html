@@ -144,6 +144,10 @@ body[data-screen="end"] #end{animation:fadein 600ms ease-out}
 /* ---------- 控えめなお知らせ ---------- */
 .toast{position:fixed;left:50%;bottom:13vh;z-index:30;transform:translateX(-50%);max-width:90vw;background:var(--ink);color:var(--paper);padding:.7em 1.2em;border-radius:2px;font-size:clamp(14px,2.2vh,20px);line-height:1.5;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.is-show{opacity:1}
+/* タイマー画面の上部中央（前半ラベルとボタン列の間）に出す、常時の小さな案内（小窓の注意・音の有効化） */
+.notices{position:fixed;left:50%;top:calc(4vh + 10px);transform:translateX(-50%);z-index:5;display:none;flex-direction:column;align-items:center;gap:2px;width:max-content;max-width:calc(100vw - 560px);pointer-events:none;text-align:center}
+body[data-screen="timer"] .notices{display:flex}
+.notice{margin:0;font-size:clamp(12px,1.8vh,17px);line-height:1.4;color:var(--ink-sub);font-weight:500}
 
 /* ---------- コンパクト表示（小窓） ---------- */
 .pip{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);overflow:hidden}
@@ -199,6 +203,7 @@ body[data-screen="end"] #end{animation:fadein 600ms ease-out}
   .phase-label{font-size:clamp(20px,6vw,34px)}
   .pause-note{font-size:clamp(13px,3.6vw,18px)}
   .tools{gap:2px}
+  .notices{top:76px;max-width:calc(100vw - 32px)}
   .turn{padding:20px 16px 16px}
   .turn-head{flex-wrap:wrap;gap:8px 16px}
   .turn-title{font-size:clamp(22px,7.4vw,44px)}
@@ -332,6 +337,10 @@ body[data-screen="end"] #end{animation:fadein 600ms ease-out}
   </div>
 </main>
 
+<div class="notices" aria-live="polite">
+  <p class="notice" id="pipNotice" hidden><span class="ph">教科書などは別のタブで開いてください。</span><span class="ph">このタブで別のページへ移ると小窓が閉じます。</span></p>
+  <p class="notice" id="audioHint" hidden>音を鳴らすには画面を1回クリック</p>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -406,6 +415,49 @@ body[data-screen="end"] #end{animation:fadein 600ms ease-out}
     try { window.localStorage.setItem(STORE_KEY, s); } catch (e) { /* 保存できなくても続行 */ }
   }
 
+  /* ===== 続きから再開（実行中の状態をこの端末に保存） ===== */
+  var RUN_KEY = 'oritimer.run.v1';
+  var RUN_MAX_AGE_MS = 2 * 60 * 60 * 1000; // 終了から2時間以上たった保存は捨てる
+  var CAN_PERSIST = SPEED === 1;            // 倍速デバッグ中は保存しない
+  function saveRun() {
+    if (!CAN_PERSIST) return;
+    var o = { v: 1, minutes: S.minutes, totalMs: S.totalMs, sound: S.sound, turnFired: S.turnFired, savedAt: Date.now() };
+    if (S.screen === 'end') {
+      o.state = 'ended';
+      o.endedAt = S.endedAt;
+    } else if (S.paused) {
+      o.state = 'paused';
+      o.remainingMs = S.totalMs - S.pausedElapsed;
+    } else {
+      o.state = 'running';
+      o.endAt = S.startRef + S.totalMs; // 終わる予定の絶対時刻（SPEED=1 なので Date.now 基準）
+    }
+    try { window.localStorage.setItem(RUN_KEY, JSON.stringify(o)); } catch (e) { /* 保存できなくても続行 */ }
+  }
+  function clearRun() {
+    if (!CAN_PERSIST) return;
+    try { window.localStorage.removeItem(RUN_KEY); } catch (e) { /* noop */ }
+  }
+  function loadRun() {
+    if (!CAN_PERSIST) return null;
+    var o = null;
+    try { o = JSON.parse(window.localStorage.getItem(RUN_KEY) || 'null'); } catch (e) { o = null; }
+    if (!o || o.v !== 1 || !Number.isInteger(o.minutes) || o.minutes < MIN_MINUTES || o.minutes > MAX_MINUTES ||
+        o.totalMs !== o.minutes * 60000) { clearRun(); return null; }
+    var now = Date.now();
+    var finishAt;
+    if (o.state === 'running' && isFinite(o.endAt)) {
+      if (o.endAt - now > o.totalMs + 60000) { clearRun(); return null; } // 時計の異常
+      finishAt = o.endAt;
+    } else if (o.state === 'paused' && isFinite(o.remainingMs) && o.remainingMs > 0 && o.remainingMs <= o.totalMs && isFinite(o.savedAt)) {
+      finishAt = o.savedAt + o.remainingMs;
+    } else if (o.state === 'ended' && isFinite(o.endedAt)) {
+      finishAt = o.endedAt;
+    } else { clearRun(); return null; }
+    if (now - finishAt >= RUN_MAX_AGE_MS) { clearRun(); return null; }
+    return o;
+  }
+
   /* ===== 状態（唯一の真実） ===== */
   var init = loadSettings();
   var S = {
@@ -423,7 +475,8 @@ body[data-screen="end"] #end{animation:fadein 600ms ease-out}
     overlayUntil: 0,      // 経過時間ベース（一時停止で自然に止まる）
     overlaySpan: TURN_SHOW_MS,
     pipTurnDismissed: false,
-    pipTurnSpan: PIP_TURN_MS  // 小窓の折り返し表示の長さ（表示を＋30秒で延びる）
+    pipTurnSpan: PIP_TURN_MS, // 小窓の折り返し表示の長さ（表示を＋30秒で延びる）
+    endedAt: 0                // 終了した時刻（Date.now 基準）
   };
 
   function elapsed() {
@@ -635,6 +688,7 @@ body[data-screen="end"] #end{animation:fadein 600ms ease-out}
     closeOverlay(true);
     setScreen('timer');
     schedule();
+    saveRun();
     render();
   }
 
@@ -666,6 +720,7 @@ body[data-screen="end"] #end{animation:fadein 600ms ease-out}
       S.paused = true;
       clearSchedule();
     }
+    saveRun();
     render();
   }
 
@@ -692,19 +747,27 @@ body[data-screen="end"] #end{animation:fadein 600ms ease-out}
     if (!silent) render();
   }
 
-  function finish() {
+  function showEnded() {
     clearSchedule();
     S.paused = false;
     S.pausedElapsed = S.totalMs;
     closeOverlay(true);
+    hideAudioHint();
     setText($('endSub'), S.minutes + '分が終わりました');
     setScreen('end');
-    playSound('end');
     render();
+  }
+  function finish() {
+    S.endedAt = CAN_PERSIST ? S.startRef + S.totalMs : Date.now();
+    showEnded();
+    playSound('end');
+    saveRun();
   }
 
   function toSetup() {
     clearSchedule();
+    clearRun();
+    hideAudioHint();
     closeOverlay(true);
     closePip();
     setScreen('setup');
@@ -737,6 +800,7 @@ body[data-screen="end"] #end{animation:fadein 600ms ease-out}
       S.pipTurnSpan = PIP_TURN_MS;
       openOverlay(e);
       playSound('turn');
+      saveRun();
     }
     if (S.overlayOpen && e >= S.overlayUntil) closeOverlay(true);
     render();
@@ -883,6 +947,7 @@ body[data-screen="end"] #end{animation:fadein 600ms ease-out}
   }
 
   function paintPipBtn() {
+    $('pipNotice').hidden = !pip;
     $('pipBtn').setAttribute('aria-pressed', String(!!pip));
     $('pipBtn').title = pip ? 'コンパクト表示を閉じる' : 'コンパクト表示（小窓をほかのアプリの上に表示）';
   }
@@ -1008,12 +1073,89 @@ body[data-screen="end"] #end{animation:fadein 600ms ease-out}
     window.addEventListener('focus', function () { tick(); });
   }
 
+  /* ===== 再開時の音の有効化（自動再生できないため、最初の操作で有効にする） ===== */
+  var audioHintBound = false;
+  function onFirstGesture() {
+    ensureAudio();
+    hideAudioHint();
+  }
+  function offerAudioUnlock() {
+    if (!S.sound || S.screen !== 'timer') return;
+    $('audioHint').hidden = false;
+    if (audioHintBound) return;
+    audioHintBound = true;
+    document.addEventListener('pointerdown', onFirstGesture, true);
+    document.addEventListener('keydown', onFirstGesture, true);
+  }
+  function hideAudioHint() {
+    $('audioHint').hidden = true;
+    if (!audioHintBound) return;
+    audioHintBound = false;
+    document.removeEventListener('pointerdown', onFirstGesture, true);
+    document.removeEventListener('keydown', onFirstGesture, true);
+  }
+
+  /* ===== 続きから再開 ===== */
+  function restoreRun(o) {
+    var now = Date.now();
+    S.minutes = o.minutes;
+    S.totalMs = o.totalMs;
+    S.halfMs = o.totalMs / 2;
+    if (typeof o.sound === 'boolean') S.sound = o.sound;
+    S.turnFired = !!o.turnFired;
+    S.turnShownAt = S.turnFired ? S.halfMs : 0;
+    S.pipTurnDismissed = S.turnFired; // 出し終えた折り返しは小窓でも出し直さない
+    S.pipTurnSpan = PIP_TURN_MS;
+    paintSound();
+
+    if (o.state === 'ended') {
+      S.endedAt = o.endedAt;
+      showEnded();
+      return;
+    }
+    if (o.state === 'paused') {
+      S.paused = true;
+      S.pausedElapsed = S.totalMs - o.remainingMs;
+      S.startRef = 0;
+      setScreen('timer');
+    } else {
+      S.paused = false;
+      S.startRef = o.endAt - S.totalMs;
+      var e = now - S.startRef;
+      if (e >= S.totalMs) {             // 閉じている間に終了時刻を過ぎた
+        S.turnFired = true;
+        S.endedAt = o.endAt;
+        showEnded();
+        saveRun();
+        return;
+      }
+      setScreen('timer');
+      if (!S.turnFired && e >= S.halfMs) { // 閉じている間に折り返しを過ぎた（音は鳴らさない）
+        S.turnFired = true;
+        S.turnShownAt = S.halfMs;
+        S.pipTurnDismissed = false;
+        if (e - S.halfMs < TURN_SHOW_MS) openOverlay(S.halfMs); // 残りの表示時間 = 30秒 - 経過分
+        saveRun();
+      }
+      schedule();
+    }
+    render();
+    offerAudioUnlock();
+  }
+
   /* ===== 起動 ===== */
   buildStatic();
   bind();
   paintSound();
   $('minInput').value = String(S.minutes);
   onMinutesChanged();
+  try {
+    var saved = loadRun();
+    if (saved) restoreRun(saved);
+  } catch (e) {
+    clearRun();
+    setScreen('setup');
+  }
   setInterval(tick, TICK_MS);
 
   // 倍速デバッグ時だけ、確認用に状態を公開
