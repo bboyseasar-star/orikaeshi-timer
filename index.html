@@ -81,16 +81,20 @@ body[data-screen="end"] #end{display:flex}
 .dial-face{fill:var(--paper)}
 .dial-rim{fill:none;stroke:var(--rule);stroke-width:1}
 .dial-first{fill:var(--first)}
-.dial-second{fill:var(--second)}
+.dial-second{fill:var(--second);transition:fill-opacity 400ms}
+/* 前半中は主役の深緑を立て、後半ぶんの柿渋は淡く「この先」の予告として見せる */
+#timer:not(.is-second) .dial-second,.pip:not(.is-second) .dial-second{fill-opacity:.35}
 .dial-tick{stroke:var(--ink);stroke-width:2}
 .dial-turn{stroke:var(--ink);stroke-width:2.6}
 .dial-label{fill:var(--ink-sub);font-size:11px;font-weight:700;font-family:var(--font)}
 .readout{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:2.4vh;min-width:0;width:calc(min(16vw,30vh) * 2.95)} /* 幅を固定して、10:00→9:59 で円が横に動かないように */
 .clock{display:flex;font-size:min(16vw,30vh);line-height:.9;letter-spacing:-.02em;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;transition:opacity .3s}
 .clock.is-long{font-size:min(12.5vw,30vh)}
-.timer-sub{margin:0;display:flex;align-items:baseline;gap:.6em;font-size:min(2.4vw,4.2vh);font-weight:600;color:var(--ink-sub);letter-spacing:.08em;white-space:nowrap}
-.timer-sub b{color:var(--ink);font-weight:600;letter-spacing:0;font-size:1.2em}
-.is-second .timer-sub{color:var(--second);font-weight:700;letter-spacing:.3em}
+.clock-label{margin:0;font-size:min(2.6vw,4.4vh);font-weight:700;letter-spacing:.2em;color:var(--first);white-space:nowrap;transition:color 400ms}
+.is-second .clock-label{color:var(--second)}
+.timer-sub{margin:0;display:flex;align-items:baseline;gap:.6em;font-size:min(2.2vw,3.8vh);font-weight:600;color:var(--ink-sub);letter-spacing:.08em;white-space:nowrap}
+.timer-sub b{color:var(--ink);font-weight:600;letter-spacing:0;font-size:1.15em}
+.is-second .timer-sub{visibility:hidden} /* 後半は出さない（高さは残して数字が上下に動かないように） */
 .is-paused .dial{opacity:.42}
 .clock-t{display:inline-block;white-space:nowrap}
 .colon{display:inline-block;position:relative;width:max(3px,.058em);height:.72em;margin:0 .09em;vertical-align:baseline}
@@ -169,7 +173,7 @@ body[data-screen="timer"] .notices{display:flex}
 .pip{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);overflow:hidden}
 .pip-normal{flex:1;min-height:0;display:flex;flex-direction:column;padding:6px 12px 8px}
 .pip-top{display:flex;justify-content:space-between;align-items:center;height:36px;flex:none}
-.pip-phase{font-size:14px;font-weight:700;letter-spacing:.3em;color:var(--first)}
+.pip-phase{font-size:14px;font-weight:700;letter-spacing:.12em;color:var(--first);white-space:nowrap}
 .pip.is-second .pip-phase{color:var(--second)}
 .pip-pause{font-size:12px;color:var(--ink-sub);font-weight:600;margin-left:.6em;letter-spacing:.1em}
 .pip .icon-btn{width:36px;height:36px}
@@ -223,6 +227,7 @@ body[data-screen="timer"] .notices{display:flex}
   .clock{font-size:min(22vw,14vh)}
   .clock.is-long{font-size:min(17vw,14vh)}
   .timer-sub{font-size:clamp(14px,4vw,22px)}
+  .clock-label{font-size:clamp(15px,4.4vw,24px)}
 }
 @media (max-width:800px){
   .screen{padding:16px 16px 20px}
@@ -319,8 +324,9 @@ body[data-screen="timer"] .notices{display:flex}
   <div class="timer-body">
     <div class="dial" id="dial"></div>
     <div class="readout">
+      <p class="clock-label" id="clockLabel" aria-hidden="true">折り返しまで</p>
       <div class="clock" id="clock" role="timer" aria-live="off"></div>
-      <p class="timer-sub" id="timerSub"><span id="subLabel">折り返しまで</span><b class="num" id="subTime"></b></p>
+      <p class="timer-sub" id="timerSub"><span>終了まで</span><b class="num" id="subTime"></b></p>
     </div>
   </div>
 </main>
@@ -332,7 +338,7 @@ body[data-screen="timer"] .notices{display:flex}
       <h2 class="turn-title">実行確認・実行調整</h2>
       <p class="turn-sub"><span class="ph">1つ選んで、</span><span class="ph">後半の自分を</span><span class="ph">調整しよう</span></p>
     </div>
-    <p class="turn-rest">後半<b class="num" id="turnRest"></b></p>
+    <p class="turn-rest">終了まで<b class="num" id="turnRest"></b></p>
   </div>
   <hr class="turn-rule">
   <ol class="qgrid" id="qgrid"></ol>
@@ -559,14 +565,17 @@ body[data-screen="timer"] .notices{display:flex}
     return sec === 0 ? m + '分' : m + '分' + sec + '秒';
   }
   // 「mm:ss」を、数字＋CSSの丸2つで描く（タイマー・折り返し・小窓で共通）
-  function paintClock(el, text) {
-    if (!el || el.getAttribute('data-t') === text) return;
+  // prefix は読み上げ用の前置き（例「折り返しまで」→「折り返しまで9分30秒」）
+  function paintClock(el, text, prefix) {
+    prefix = prefix || '';
+    if (!el || (el.getAttribute('data-t') === text && el.getAttribute('data-p') === prefix)) return;
     if (!el.querySelector('.clock-t')) el.innerHTML = TIME_INNER;
     el.setAttribute('data-t', text);
+    el.setAttribute('data-p', prefix);
     var parts = text.split(':');
     el.querySelector('.mm').textContent = parts[0];
     el.querySelector('.ss').textContent = parts[1];
-    var say = spoken(text);
+    var say = prefix + spoken(text);
     el.querySelector('.sr').textContent = say;
     el.setAttribute('aria-label', say);
     el.classList.toggle('is-long', parts[0].length >= 3);
@@ -894,6 +903,9 @@ body[data-screen="timer"] .notices{display:flex}
       time: fmt(rem),
       q: S.totalMs > 0 ? rem / S.totalMs : 0,
       toTurn: fmt(rem - S.halfMs),
+      // 大きな数字: 前半は折り返しまで、後半は終了まで
+      big: second ? fmt(rem) : fmt(rem - S.halfMs),
+      bigLabel: second ? '終了まで' : '折り返しまで',
       p: p,
       second: second,
       paused: S.paused,
@@ -913,11 +925,10 @@ body[data-screen="timer"] .notices{display:flex}
     timer.classList.toggle('is-paused', vm.paused);
     setText($('phaseLabel'), vm.second ? '後半' : '前半');
     $('pauseNote').hidden = !vm.paused;
-    paintClock($('clock'), vm.time);
+    setText($('clockLabel'), vm.bigLabel);
+    paintClock($('clock'), vm.big, vm.bigLabel);
     paintDial($('dial').firstChild, vm.q);
-    setText($('subLabel'), vm.second ? '後半' : '折り返しまで');
-    $('subTime').hidden = vm.second;
-    if (!vm.second) paintClock($('subTime'), vm.toTurn);
+    paintClock($('subTime'), vm.time, '終了まで');
     var pb = $('pauseBtn');
     var pLabel = vm.paused ? '再開' : '一時停止';
     if (pb.getAttribute('aria-label') !== pLabel) {
@@ -927,7 +938,7 @@ body[data-screen="timer"] .notices{display:flex}
     }
 
     if (S.overlayOpen) {
-      paintClock($('turnRest'), vm.time);
+      paintClock($('turnRest'), vm.time, '終了まで');
       var frac = Math.max(0, Math.min(1, (S.overlayUntil - vm.e) / S.overlaySpan));
       $('turnLine').style.transform = 'scaleX(' + frac.toFixed(4) + ')';
       $('turnPaused').hidden = !vm.paused;
@@ -981,7 +992,7 @@ body[data-screen="timer"] .notices{display:flex}
         '<div class="pip-turn" title="クリックで通常表示に戻る">' +
           '<p class="pip-turn-title">実行確認・実行調整</p>' +
           '<p class="pip-q"><span class="pip-q-num"></span><span class="pip-q-text"></span></p>' +
-          '<p class="pip-rest">後半<b></b></p>' +
+          '<p class="pip-rest">終了まで<b></b></p>' +
         '</div>' +
         '<div class="pip-end"><p class="pip-end-title">振り返り</p><p class="pip-end-sub">目標に照らしてABCで自己評価</p></div>' +
       '</div>';
@@ -1042,7 +1053,7 @@ body[data-screen="timer"] .notices{display:flex}
       if (pip.root.getAttribute('data-mode') !== mode) pip.root.setAttribute('data-mode', mode);
       pip.root.classList.toggle('is-second', vm.second);
       pip.root.classList.toggle('is-paused', vm.paused);
-      setText(r.phase, vm.second ? '後半' : '前半');
+      setText(r.phase, vm.second ? '後半 終了まで' : '前半 折り返しまで');
       r.pauseNote.hidden = !vm.paused;
       var lbl = vm.paused ? '再開' : '一時停止';
       if (r.btn.getAttribute('aria-label') !== lbl) {
@@ -1050,7 +1061,7 @@ body[data-screen="timer"] .notices{display:flex}
         r.btn.setAttribute('aria-label', lbl);
         r.btn.title = lbl;
       }
-      paintClock(r.clock, vm.time);
+      paintClock(r.clock, vm.big, vm.bigLabel);
       paintTrack(r.track, vm.p, vm.second);
       paintDial(r.dial, vm.q);
       if (mode === 'turn') {
@@ -1059,7 +1070,7 @@ body[data-screen="timer"] .notices{display:flex}
           r.qText.setAttribute('data-i', String(vm.pipQ));
           r.qText.innerHTML = phraseHTML(QUESTIONS[vm.pipQ]);
         }
-        paintClock(r.rest, vm.time);
+        paintClock(r.rest, vm.time, '終了まで');
       }
     } catch (e) {
       // 小窓が閉じかけている等。本体の動作は止めない
