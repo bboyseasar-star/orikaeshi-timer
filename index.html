@@ -3,23 +3,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
 <title>折り返しタイマー</title>
+<script>
+/* 最初の描画前に表示モード（ダーク/ライト）を決めて、ちらつきを防ぐ */
+(function () {
+  var t = 'dark';
+  try {
+    var o = JSON.parse(window.localStorage.getItem('oritimer.v1') || 'null');
+    if (o && (o.theme === 'light' || o.theme === 'dark')) t = o.theme;
+  } catch (e) { /* 使えなければダーク */ }
+  document.documentElement.setAttribute('data-theme', t);
+  var m = document.querySelector('meta[name="color-scheme"]');
+  if (m) m.setAttribute('content', t);
+})();
+</script>
 <style>
-:root{
-  --paper:#F2EEE4;
+:root,html[data-theme="dark"]{
+  --bg:#141816;
+  --ink:#EDE8DC;
+  --ink-sub:#ADB2A8;
+  --rule:#4A524C;
+  --first:#BDEBD3;
+  --second:#C2532A;
+  --turn:#E8AE3A;
+  --turn-ink:#141816;
+  --end-band:#EDE8DC;
+  --end-band-ink:#141816;
+  --end-band-sub:#4A524C;
+  --hover:rgba(237,232,220,.08);
+  color-scheme:dark;
+}
+html[data-theme="light"]{
+  --bg:#F2EEE4;
   --ink:#1C211E;
-  --ink-sub:#575C57;
-  --rule:#CFC8B8;
-  --first:#2C5A4C;
-  --second:#A8471F;
+  --ink-sub:#4F554F;
+  --rule:#B9B1A0;
+  --first:#163A2F;
+  --second:#C8602F;
   --turn:#E2A72E;
-  --end:#1C211E;
+  --turn-ink:#1C211E;
+  --end-band:#1C211E;
+  --end-band-ink:#F2EEE4;
+  --end-band-sub:#B9B1A0;
+  --hover:rgba(28,33,30,.07);
+  color-scheme:light;
+}
+:root{
   --font:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","BIZ UDPGothic","Yu Gothic UI",Meiryo,sans-serif;
   --ease-up:cubic-bezier(.2,.7,.2,1);
   --ease-down:cubic-bezier(.4,0,1,1);
 }
 *,*::before,*::after{box-sizing:border-box}
-html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased}
 /* 日本語は文節（.ph）単位で折り返す。対応ブラウザでは auto-phrase も併用 */
 body{line-break:strict;word-break:auto-phrase;text-wrap:pretty}
 .ph{display:inline-block}
@@ -37,34 +73,38 @@ body[data-screen="end"] #end{display:flex}
 /* ---------- 共通の文字ボタン ---------- */
 .textbtn{background:transparent;border:0;border-bottom:1px solid currentColor;padding:.35em .1em;min-height:48px;font-size:clamp(16px,2.4vh,22px);font-weight:600;letter-spacing:.06em}
 .icon-btn{width:48px;height:48px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:4px;color:var(--ink-sub);padding:0}
-.icon-btn:hover{background:rgba(28,33,30,.07);color:var(--ink)}
+.icon-btn:hover{background:var(--hover);color:var(--ink)}
 .icon-btn svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-.icon-btn[aria-pressed="true"]{color:var(--ink);background:rgba(28,33,30,.07)}
+.icon-btn[aria-pressed="true"]{color:var(--ink);background:var(--hover)}
+.icon-btn svg.ic-theme{width:24px;height:24px}
+.icon-btn svg.ic-theme circle{stroke-width:2}
+.icon-btn svg.ic-theme path{fill:currentColor;stroke:none}
 
 /* ---------- 設定画面 ---------- */
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:2vw;flex:none;min-height:48px}
-#soundBtn{white-space:nowrap;flex:none}
+.topbar-tools{display:flex;align-items:center;gap:clamp(14px,2vw,32px);flex:none}
+#soundBtn,#themeBtn{white-space:nowrap;flex:none}
 .brand{margin:0;font-size:clamp(18px,3vh,28px);font-weight:700;letter-spacing:.12em}
 .setup-body{flex:1;display:flex;flex-direction:column;justify-content:center;justify-content:safe center;gap:3.2vh;width:100%;max-width:1400px;margin:0 auto;min-height:0}
-.setup-label{margin:0;font-size:clamp(15px,2.4vh,24px);color:var(--ink-sub);letter-spacing:.3em;font-weight:600}
+.setup-label{margin:0;font-size:clamp(20px,2.6vh,26px);color:var(--ink-sub);letter-spacing:.3em;font-weight:600}
 .presets{display:flex;flex-wrap:wrap;gap:1vh 1.6vw}
 .preset{background:transparent;border:0;border-bottom:2px solid var(--ink);border-radius:2px;min-height:max(64px,11vh);padding:0 .45em;font-size:clamp(28px,6.4vh,72px);font-weight:600;line-height:1;display:inline-flex;align-items:center;justify-content:center;padding-top:.1em;transition:background-color .18s,color .18s}
 .preset small{margin-left:.08em;font-size:.38em;font-weight:600;letter-spacing:.05em}
-.preset:hover{background:rgba(28,33,30,.06)}
-.preset[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.preset:hover{background:var(--hover)}
+.preset[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .custom{display:flex;align-items:baseline;gap:.6em;font-size:clamp(17px,2.8vh,28px);font-weight:600}
-.custom label{color:var(--ink-sub);letter-spacing:.12em}
+.custom label{color:var(--ink);letter-spacing:.12em}
 .custom input{width:2.6em;font:inherit;font-size:clamp(30px,6vh,64px);font-weight:600;text-align:center;color:var(--ink);background:transparent;border:0;border-bottom:2px solid var(--ink);border-radius:0;padding:0 .1em;font-variant-numeric:tabular-nums}
-.custom input:focus{outline:none;border-bottom-color:var(--first);background:rgba(44,90,76,.06)}
+.custom input:focus{outline:none;border-bottom-color:var(--first);background:var(--hover)}
 .custom input[aria-invalid="true"]{border-bottom-style:dashed}
 .custom .unit{font-size:clamp(20px,3.4vh,34px)}
 .setup-info{display:flex;flex-wrap:wrap;gap:.5em 2.4em;align-items:baseline;min-height:1.6em;font-size:clamp(15px,2.3vh,22px)}
-.half-preview{color:var(--ink-sub);font-weight:600;letter-spacing:.06em}
+.half-preview{color:var(--ink);font-weight:600;letter-spacing:.06em}
 .half-preview b{color:var(--ink);font-size:1.25em;margin-left:.3em}
-.hint{margin:0;color:var(--ink-sub)}
+.hint{margin:0;color:var(--ink);font-weight:600}
 .setup-foot{display:flex;justify-content:flex-end;align-items:center;gap:2vw}
-.start{background:var(--ink);color:var(--paper);border:0;border-radius:2px;font-size:clamp(22px,4.4vh,44px);font-weight:700;letter-spacing:.12em;padding:.42em 1.3em .46em;min-height:64px}
-.start:hover{background:#2b322e}
+.start{background:var(--ink);color:var(--bg);border:0;border-radius:2px;font-size:clamp(22px,4.4vh,44px);font-weight:700;letter-spacing:.12em;padding:.42em 1.3em .46em;min-height:64px}
+.start:hover{background:var(--ink-sub)}
 .start:disabled{background:var(--rule);color:var(--ink-sub);cursor:not-allowed}
 
 /* ---------- タイマー画面 ---------- */
@@ -72,37 +112,40 @@ body[data-screen="end"] #end{display:flex}
 .phase{display:flex;align-items:baseline;gap:1.2em}
 .phase-label{font-size:4.5vh;font-weight:700;letter-spacing:.3em;color:var(--first);padding-bottom:.5vh;border-bottom:.5vh solid currentColor;transition:color 400ms}
 .is-second .phase-label{color:var(--second)}
-.pause-note{font-size:2.6vh;color:var(--ink-sub);font-weight:600;letter-spacing:.12em}
+.pause-note{font-size:max(14px,2.6vh);color:var(--ink);font-weight:600;letter-spacing:.12em}
 .tools{display:flex;gap:6px}
 /* 円（左）＋残り時間（右）。狭い画面・縦長では上下 */
 .timer-body{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;gap:5vw}
 .dial{flex:none;width:min(68vh,46vw);height:min(68vh,46vw);transition:opacity .3s}
 .dial svg{display:block;width:100%;height:100%;overflow:visible}
-.dial-face{fill:var(--paper)}
-.dial-rim{fill:none;stroke:var(--rule);stroke-width:1}
+.dial-face{fill:var(--bg)}
+/* 経過部分は塗らず、外周の線だけで円を示す */
+.dial-rim{fill:none;stroke:var(--ink-sub);stroke-width:1.5px;vector-effect:non-scaling-stroke}
 .dial-first{fill:var(--first)}
-.dial-second{fill:var(--second);transition:fill-opacity 400ms}
-/* 前半中は主役の深緑を立て、後半ぶんの柿渋は淡く「この先」の予告として見せる */
-#timer:not(.is-second) .dial-second,.pip:not(.is-second) .dial-second{fill-opacity:.35}
-.dial-tick{stroke:var(--ink);stroke-width:2}
-.dial-turn{stroke:var(--ink);stroke-width:2.6}
-.dial-label{fill:var(--ink-sub);font-size:11px;font-weight:700;font-family:var(--font)}
+.dial-second{fill:var(--second)}
+/* 前半中の「この先の後半」は柿の斜線＋柿の輪郭（淡くせず、地とはっきり区別） */
+#timer:not(.is-second) .dial-second,.pip:not(.is-second) .dial-second{fill:url(#oriHatch);stroke:var(--second);stroke-width:2px;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.hatch-gap{fill:var(--bg)}
+.hatch-line{fill:var(--second)}
+.dial-split{stroke:var(--bg);stroke-width:2px;vector-effect:non-scaling-stroke}
+.dial-tick,.dial-turn{stroke:var(--ink);stroke-width:3px;vector-effect:non-scaling-stroke}
+.dial-label{fill:var(--ink);font-size:11px;font-weight:700;font-family:var(--font)}
 .readout{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:2.4vh;min-width:0;width:calc(min(16vw,30vh) * 2.95)} /* 幅を固定して、10:00→9:59 で円が横に動かないように */
-.clock{display:flex;font-size:min(16vw,30vh);line-height:.9;letter-spacing:-.02em;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;transition:opacity .3s}
+.clock{display:flex;font-size:min(16vw,30vh);line-height:.9;letter-spacing:-.02em;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;transition:color .3s}
 .clock.is-long{font-size:min(12.5vw,30vh)}
 .clock-label{margin:0;font-size:min(2.6vw,4.4vh);font-weight:700;letter-spacing:.2em;color:var(--first);white-space:nowrap;transition:color 400ms}
 .is-second .clock-label{color:var(--second)}
-.timer-sub{margin:0;display:flex;align-items:baseline;gap:.6em;font-size:min(2.2vw,3.8vh);font-weight:600;color:var(--ink-sub);letter-spacing:.08em;white-space:nowrap}
+.timer-sub{margin:0;display:flex;align-items:baseline;gap:.6em;font-size:min(2.2vw,3.8vh);font-weight:600;color:var(--ink);letter-spacing:.08em;white-space:nowrap}
 .timer-sub b{color:var(--ink);font-weight:600;letter-spacing:0;font-size:1.15em}
 .is-second .timer-sub{visibility:hidden} /* 後半は出さない（高さは残して数字が上下に動かないように） */
-.is-paused .dial{opacity:.42}
+.is-paused .dial{opacity:.4}
 .clock-t{display:inline-block;white-space:nowrap}
 .colon{display:inline-block;position:relative;width:max(3px,.058em);height:.72em;margin:0 .09em;vertical-align:baseline}
 .colon i{position:absolute;left:0;width:max(3px,.058em);height:max(3px,.058em);border-radius:50%;background:var(--ink-sub)}
 .colon i:first-child{bottom:.47em}
 .colon i:last-child{bottom:.15em}
 .sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-.is-paused .clock{opacity:.42}
+.is-paused .clock{color:var(--ink-sub)}
 
 /* ---------- 往復の帯 ---------- */
 .track{position:relative;height:1.6vh;margin:5.5vh 0 2.4vh;flex:none}
@@ -110,13 +153,13 @@ body[data-screen="end"] #end{display:flex}
 .fill{position:absolute;top:0;bottom:0;width:0}
 .fill-a{left:0;background:var(--first);transition:background-color 400ms,opacity 400ms}
 .fill-b{left:50%;background:var(--second)}
-.track.is-second .fill-a{background:var(--second);opacity:.38}
+.track.is-second .fill-a{background:repeating-linear-gradient(45deg,var(--second) 0 3px,var(--bg) 3px 7px)}
 .notch{position:absolute;left:50%;top:-2vh;bottom:-2vh;width:4px;margin-left:-2px;background:var(--ink)}
-.notch-label{position:absolute;left:50%;bottom:calc(100% + 2.4vh);transform:translateX(-50%);font-size:clamp(12px,2vh,20px);font-weight:700;color:var(--ink-sub);line-height:1}
+.notch-label{position:absolute;left:50%;bottom:calc(100% + 2.4vh);transform:translateX(-50%);font-size:clamp(12px,2vh,20px);font-weight:700;color:var(--ink);line-height:1}
 .marker{position:absolute;left:0;top:-.9vh;bottom:-.9vh;width:2px;margin-left:-1px;background:var(--ink)}
 
 /* ---------- 折り返し画面 ---------- */
-.turn{position:fixed;inset:0;z-index:10;overflow:hidden;background:var(--turn);color:var(--ink);display:flex;flex-direction:column;padding:5vh 5vw 3.5vh;cursor:pointer;
+.turn{position:fixed;inset:0;z-index:10;overflow:hidden;background:var(--turn);color:var(--turn-ink);display:flex;flex-direction:column;padding:5vh 5vw 3.5vh;cursor:pointer;
   transform:translateY(100%);visibility:hidden;transition:transform 320ms var(--ease-down),visibility 0s linear 320ms}
 .turn.is-open{transform:none;visibility:visible;transition:transform 480ms var(--ease-up),visibility 0s}
 .turn-head{display:flex;justify-content:space-between;align-items:flex-start;gap:4vw}
@@ -124,24 +167,26 @@ body[data-screen="end"] #end{display:flex}
 .turn-sub{margin:1.6vh 0 0;font-size:min(2.6vw,3.8vh);font-weight:600;line-height:1.4}
 .turn-rest{margin:0;text-align:right;white-space:nowrap;font-size:min(2.4vw,3.6vh);font-weight:700;letter-spacing:.2em}
 .turn-rest b{display:block;font-size:min(5vw,7.4vh);letter-spacing:-.01em;font-weight:600;line-height:1.1}
-.turn-rule{border:0;border-top:2px solid var(--ink);margin:3vh 0 2.6vh;flex:none}
+.turn-rule{border:0;border-top:2px solid var(--turn-ink);margin:3vh 0 2.6vh;flex:none}
 .qgrid{flex:1;min-height:0;margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,auto);grid-auto-flow:column;column-gap:5vw;row-gap:3.4vh;align-content:start}
 .q{display:flex;gap:.65em;align-items:baseline;font-size:min(2.8vw,4.4vh);line-height:1.5;font-weight:600;opacity:0;transform:translateY(.5em)}
 .turn.is-open .q{opacity:1;transform:none;transition:opacity 420ms ease-out,transform 420ms var(--ease-up);transition-delay:calc(220ms + var(--i) * 70ms)}
 .q-num{flex:none;min-width:.9em;font-size:1.55em;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 .turn-foot{display:flex;align-items:center;gap:2.4vw;margin-top:1.6vh;flex:none}
-.turn-line{flex:1;height:2px;background:rgba(28,33,30,.2);position:relative;overflow:hidden}
-.turn-line span{position:absolute;inset:0;background:var(--ink);transform-origin:left center}
-.turn-paused{font-size:clamp(14px,2.2vh,20px);font-weight:600;color:var(--ink)}
-.turn .textbtn{color:var(--ink)}
+.turn-line{flex:1;height:2px;position:relative;overflow:hidden}
+.turn-line::before{content:"";position:absolute;inset:0;background:var(--turn-ink);opacity:.2}
+.turn-line span{position:absolute;inset:0;background:var(--turn-ink);transform-origin:left center}
+.turn-paused{font-size:clamp(14px,2.2vh,20px);font-weight:600;color:var(--turn-ink)}
+.turn .textbtn{color:var(--turn-ink)}
+.turn button:focus-visible{outline-color:var(--turn-ink)}
+.turn .colon i,.pip[data-mode="turn"] .colon i{background:var(--turn-ink)}
 
 /* ---------- 終了画面 ---------- */
-/* 明るい教室のプロジェクターでは黒が灰色に浮いて文字のコントラストが落ちるため、
-   文字量の多い本文は紙地＋墨文字。終わりの合図は上部の墨の帯で示す。 */
-.end{padding:0;background:var(--paper);color:var(--ink);overflow:hidden}
-.end-band{flex:none;display:flex;justify-content:space-between;align-items:baseline;gap:2vw;background:var(--end);color:var(--paper);padding:2vh 4vw 2.2vh}
+/* 本文は地の色＋文字色。終わりの合図は上部の帯（ダークは生成り帯に墨文字、ライトは墨帯に生成り文字） */
+.end{padding:0;background:var(--bg);color:var(--ink);overflow:hidden}
+.end-band{flex:none;display:flex;justify-content:space-between;align-items:baseline;gap:2vw;background:var(--end-band);color:var(--end-band-ink);padding:2vh 4vw 2.2vh}
 .end-title{margin:0;font-size:min(5.6vw,8.6vh);font-weight:800;letter-spacing:.24em;line-height:1.1}
-.end-sub{margin:0;font-size:min(1.9vw,3vh);font-weight:600;opacity:.75;letter-spacing:.12em;white-space:nowrap}
+.end-sub{margin:0;font-size:min(1.9vw,3vh);font-weight:600;color:var(--end-band-sub);letter-spacing:.12em;white-space:nowrap}
 .end-body{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;justify-content:safe center;gap:3.2vh;padding:2.8vh 4vw 0}
 .end-label{margin:0 0 1.2vh;font-size:min(1.9vw,3.1vh);font-weight:700;color:var(--ink-sub);letter-spacing:.24em}
 .abc{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,1fr);border-top:2px solid var(--ink)}
@@ -153,56 +198,56 @@ body[data-screen="end"] #end{display:flex}
 .tips li+li{border-left:1px solid var(--rule)}
 .tip-head{display:flex;align-items:baseline;gap:.5em;font-size:min(2.9vw,4.6vh);font-weight:800;line-height:1.2}
 .tip-num{font-size:1.5em;font-variant-numeric:tabular-nums}
-.tip-text{margin:0;font-size:min(2.5vw,4.2vh);font-weight:500;line-height:1.5}
+.tip-text{margin:0;font-size:min(2.5vw,4.2vh);font-weight:600;line-height:1.5}
 .tip-text strong{font-weight:800}
 .end-actions{flex:none;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:1vh 3vw;padding:.6vh 4vw 1.4vh}
-.end .textbtn{color:var(--ink-sub);font-size:clamp(15px,2.3vh,22px);font-weight:600;min-height:44px}
-.end .textbtn:hover{color:var(--ink)}
+.end .textbtn{color:var(--ink);font-size:clamp(15px,2.3vh,22px);font-weight:600;min-height:44px}
+.end .textbtn:hover{background:var(--hover)}
 body[data-screen="end"] #end{animation:fadein 600ms ease-out}
 @keyframes fadein{from{opacity:0}to{opacity:1}}
 
 /* ---------- 控えめなお知らせ ---------- */
-.toast{position:fixed;left:50%;bottom:13vh;z-index:30;transform:translateX(-50%);max-width:90vw;background:var(--ink);color:var(--paper);padding:.7em 1.2em;border-radius:2px;font-size:clamp(14px,2.2vh,20px);line-height:1.5;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast{position:fixed;left:50%;bottom:13vh;z-index:30;transform:translateX(-50%);max-width:90vw;background:var(--ink);color:var(--bg);font-weight:600;padding:.7em 1.2em;border-radius:2px;font-size:clamp(14px,2.2vh,20px);line-height:1.5;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.is-show{opacity:1}
 /* タイマー画面の上部中央（前半ラベルとボタン列の間）に出す、常時の小さな案内（小窓の注意・音の有効化） */
 .notices{position:fixed;left:50%;top:calc(4vh + 10px);transform:translateX(-50%);z-index:5;display:none;flex-direction:column;align-items:center;gap:2px;width:max-content;max-width:calc(100vw - 560px);pointer-events:none;text-align:center}
 body[data-screen="timer"] .notices{display:flex}
-.notice{margin:0;font-size:clamp(12px,1.8vh,17px);line-height:1.4;color:var(--ink-sub);font-weight:500}
+.notice{margin:0;font-size:clamp(12px,1.8vh,17px);line-height:1.4;color:var(--ink);font-weight:600}
 
 /* ---------- コンパクト表示（小窓） ---------- */
-.pip{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);overflow:hidden}
+.pip{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);overflow:hidden}
 .pip-normal{flex:1;min-height:0;display:flex;flex-direction:column;padding:6px 12px 8px}
 .pip-top{display:flex;justify-content:space-between;align-items:center;height:36px;flex:none}
 .pip-phase{font-size:14px;font-weight:700;letter-spacing:.12em;color:var(--first);white-space:nowrap}
 .pip.is-second .pip-phase{color:var(--second)}
-.pip-pause{font-size:12px;color:var(--ink-sub);font-weight:600;margin-left:.6em;letter-spacing:.1em}
+.pip-pause{font-size:12px;color:var(--ink);font-weight:600;margin-left:.6em;letter-spacing:.1em}
 .pip .icon-btn{width:36px;height:36px}
 .pip .icon-btn svg{width:20px;height:20px}
 .pip-mid{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;gap:12px}
 .pip-dial{display:none;flex:none;width:55vh;height:55vh}
 .pip-dial svg{display:block;width:100%;height:100%;overflow:visible}
-.pip.is-paused .pip-dial{opacity:.42}
-.pip-clock{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;font-size:min(34vw,46vh);line-height:.9;font-weight:600;letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.pip.is-paused .pip-dial{opacity:.4}
+.pip-clock{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;font-size:min(34vw,46vh);line-height:.9;font-weight:700;letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 .pip-clock.is-long{font-size:min(27vw,46vh)}
-.pip.is-paused .pip-clock{opacity:.42}
+.pip.is-paused .pip-clock{color:var(--ink-sub)}
 .pip .track{height:6px;margin:10px 4px 8px}
 .pip .notch{top:-6px;bottom:-6px;width:3px;margin-left:-1.5px}
 .pip .notch-label{display:none}
 .pip .marker{top:-4px;bottom:-4px}
 .pip-turn,.pip-end{display:none;flex:1;flex-direction:column;padding:10px 14px}
-.pip[data-mode="turn"]{background:var(--turn);cursor:pointer}
+.pip[data-mode="turn"]{background:var(--turn);color:var(--turn-ink);cursor:pointer}
 .pip[data-mode="turn"] .pip-normal,.pip[data-mode="end"] .pip-normal{display:none}
 .pip[data-mode="turn"] .pip-turn{display:flex}
-.pip[data-mode="end"]{background:var(--end);color:var(--paper)}
+.pip[data-mode="end"]{background:var(--end-band);color:var(--end-band-ink)}
 .pip[data-mode="end"] .pip-end{display:flex;align-items:center;justify-content:center}
-.pip-turn-title{margin:0;font-size:min(6.2vw,11vh);font-weight:800;letter-spacing:.04em;border-bottom:2px solid var(--ink);padding-bottom:4px;flex:none}
+.pip-turn-title{margin:0;font-size:min(6.2vw,11vh);font-weight:800;letter-spacing:.04em;border-bottom:2px solid var(--turn-ink);padding-bottom:4px;flex:none}
 .pip-q{flex:1;min-height:0;margin:0;display:flex;gap:.45em;align-items:center;font-size:min(7vw,12.5vh);font-weight:700;line-height:1.35}
 .pip-q-num{font-size:1.4em;font-weight:800;flex:none;font-variant-numeric:tabular-nums}
 .pip-rest{margin:0;text-align:right;font-size:min(5vw,9vh);font-weight:700;letter-spacing:.12em;flex:none}
 .pip-rest b{font-weight:600;letter-spacing:0;margin-left:.3em;font-variant-numeric:tabular-nums}
 .pip[data-mode="end"] .pip-end{flex-direction:column;gap:6px;text-align:center}
 .pip-end-title{margin:0;font-size:min(14vw,26vh);font-weight:800;letter-spacing:.2em;padding-left:.2em;line-height:1.15}
-.pip-end-sub{margin:0;font-size:min(5.4vw,10vh);font-weight:600;opacity:.85;letter-spacing:.04em}
+.pip-end-sub{margin:0;font-size:min(5.4vw,10vh);font-weight:600;letter-spacing:.04em}
 /* 小窓に余裕があるときだけ、数字の左に小さな円（帯の代わり） */
 @media (min-width:300px) and (min-height:180px){
   .pip .pip-dial{display:block}
@@ -243,6 +288,10 @@ body[data-screen="timer"] .notices{display:flex}
   .phase-label{font-size:clamp(20px,6vw,34px)}
   .pause-note{font-size:clamp(13px,3.6vw,18px)}
   .tools{gap:2px}
+  .tools .icon-btn{width:44px;height:44px}
+  .phase{flex-wrap:wrap;gap:4px 1em;min-width:0}
+  .topbar{flex-wrap:wrap;gap:8px 16px}
+  .end-label{color:var(--ink)}
   .notices{top:76px;max-width:calc(100vw - 32px)}
   .turn{padding:20px 16px 16px}
   .turn-head{flex-wrap:wrap;gap:8px 16px}
@@ -287,7 +336,10 @@ body[data-screen="timer"] .notices{display:flex}
 <main id="setup" class="screen" aria-label="設定">
   <header class="topbar">
     <h1 class="brand">折り返しタイマー</h1>
-    <button id="soundBtn" class="textbtn" type="button" aria-pressed="true">音 <span id="soundState">オン</span></button>
+    <div class="topbar-tools">
+      <button id="soundBtn" class="textbtn" type="button" aria-pressed="true">音 <span id="soundState">オン</span></button>
+      <button id="themeBtn" class="textbtn" type="button">表示 <span id="themeState">ダーク</span></button>
+    </div>
   </header>
   <section class="setup-body">
     <p class="setup-label" id="presetLabel">全体の時間</p>
@@ -315,6 +367,7 @@ body[data-screen="timer"] .notices{display:flex}
       <span class="pause-note" id="pauseNote" hidden>一時停止中</span>
     </div>
     <div class="tools">
+      <button class="icon-btn" id="themeIconBtn" type="button"></button>
       <button class="icon-btn" id="pauseBtn" type="button" aria-label="一時停止" title="一時停止（Space）"></button>
       <button class="icon-btn" id="resetBtn" type="button" aria-label="リセット" title="リセット（2回押し）"></button>
       <button class="icon-btn" id="fsBtn" type="button" aria-label="全画面" title="全画面（F）"></button>
@@ -425,6 +478,7 @@ body[data-screen="timer"] .notices{display:flex}
     reset: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.05-4.95"/><path d="M5 4.5V9h4.5"/></svg>',
     fs: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15"/></svg>',
     fsExit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5V9H4.5M19.5 9H15V4.5M15 19.5V15h4.5M4.5 15H9v4.5"/></svg>',
+    theme: '<svg class="ic-theme" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z"/></svg>',
     pip: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="1"/><rect x="11.5" y="11.5" width="6.5" height="5" rx=".5"/></svg>'
   };
   var TRACK_HTML =
@@ -437,9 +491,14 @@ body[data-screen="timer"] .notices{display:flex}
   var DIAL_R = 100;
   var DIAL_HTML =
     '<svg viewBox="-116 -116 232 232" aria-hidden="true" focusable="false">' +
+      // 斜線の模様（線幅4・すき間6、45度）。小窓は別の文書なので、小窓側にもこの定義ごと入る
+      '<defs><pattern id="oriHatch" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">' +
+        '<rect class="hatch-gap" width="10" height="10"/><rect class="hatch-line" width="4" height="10"/>' +
+      '</pattern></defs>' +
       '<circle class="dial-face" r="' + DIAL_R + '"/>' +
-      '<path class="dial-first"/><path class="dial-second"/>' +
       '<circle class="dial-rim" r="' + DIAL_R + '"/>' +
+      '<path class="dial-first"/><path class="dial-second"/>' +
+      '<line class="dial-split" x1="0" y1="0" x2="0" y2="' + DIAL_R + '"/>' +
       '<line class="dial-tick" x1="0" y1="-' + (DIAL_R + 1) + '" x2="0" y2="-' + (DIAL_R - 10) + '"/>' +
       '<line class="dial-turn" x1="0" y1="' + (DIAL_R + 1) + '" x2="0" y2="' + (DIAL_R - 22) + '"/>' +
       '<text class="dial-label" x="0" y="115" text-anchor="middle">折</text>' +
@@ -459,16 +518,17 @@ body[data-screen="timer"] .notices{display:flex}
   function loadSettings() {
     var raw = null;
     try { raw = window.localStorage.getItem(STORE_KEY); } catch (e) { raw = memStore; }
-    var out = { minutes: DEFAULT_MINUTES, sound: true };
+    var out = { minutes: DEFAULT_MINUTES, sound: true, theme: 'dark' };
     try {
       var o = raw ? JSON.parse(raw) : null;
       if (o && Number.isInteger(o.minutes) && o.minutes >= MIN_MINUTES && o.minutes <= MAX_MINUTES) out.minutes = o.minutes;
       if (o && typeof o.sound === 'boolean') out.sound = o.sound;
+      if (o && (o.theme === 'light' || o.theme === 'dark')) out.theme = o.theme;
     } catch (e) { /* 壊れた値は無視 */ }
     return out;
   }
   function saveSettings() {
-    var s = JSON.stringify({ minutes: S.minutes, sound: S.sound });
+    var s = JSON.stringify({ minutes: S.minutes, sound: S.sound, theme: S.theme });
     memStore = s;
     try { window.localStorage.setItem(STORE_KEY, s); } catch (e) { /* 保存できなくても続行 */ }
   }
@@ -522,6 +582,7 @@ body[data-screen="timer"] .notices{display:flex}
     screen: 'setup',
     minutes: init.minutes,
     sound: init.sound,
+    theme: init.theme,
     totalMs: 0,
     halfMs: 0,
     startRef: 0,          // 経過0の時刻（仮想時刻）
@@ -709,6 +770,7 @@ body[data-screen="timer"] .notices{display:flex}
     $('resetBtn').innerHTML = ICONS.reset;
     $('fsBtn').innerHTML = ICONS.fs;
     $('pipBtn').innerHTML = ICONS.pip;
+    $('themeIconBtn').innerHTML = ICONS.theme;
     if (!('documentPictureInPicture' in window)) $('pipBtn').hidden = true;
   }
 
@@ -746,6 +808,28 @@ body[data-screen="timer"] .notices{display:flex}
     }
     return ok ? n : NaN;
   }
+  /* ===== 表示モード（ダーク/ライト） ===== */
+  function applyTheme(theme, announce) {
+    S.theme = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', S.theme);
+    var meta = document.querySelector('meta[name="color-scheme"]');
+    if (meta) meta.setAttribute('content', S.theme);
+    if (pip) {
+      try { pip.win.document.documentElement.setAttribute('data-theme', S.theme); } catch (e) { /* noop */ }
+    }
+    var dark = S.theme === 'dark';
+    setText($('themeState'), dark ? 'ダーク' : 'ライト');
+    var label = dark ? 'ライト表示に切り替え' : 'ダーク表示に切り替え';
+    $('themeBtn').setAttribute('aria-label', '表示 ' + (dark ? 'ダーク' : 'ライト') + '（' + label + '）');
+    $('themeIconBtn').setAttribute('aria-label', label);
+    $('themeIconBtn').title = label;
+    if (announce) {
+      saveSettings();
+      toast(dark ? 'ダーク表示にしました' : 'ライト表示にしました', 2000);
+    }
+  }
+  function toggleTheme() { applyTheme(S.theme === 'dark' ? 'light' : 'dark', true); }
+
   function paintSound() {
     $('soundBtn').setAttribute('aria-pressed', String(S.sound));
     setText($('soundState'), S.sound ? 'オン' : 'オフ');
@@ -975,6 +1059,7 @@ body[data-screen="timer"] .notices{display:flex}
   function buildPip(win) {
     var doc = win.document;
     doc.documentElement.lang = 'ja';
+    doc.documentElement.setAttribute('data-theme', S.theme);
     doc.title = '折り返しタイマー';
     var style = doc.createElement('style');
     var src = document.querySelector('style');
@@ -1120,6 +1205,8 @@ body[data-screen="timer"] .notices{display:flex}
       }
     });
 
+    $('themeBtn').addEventListener('click', toggleTheme);
+    $('themeIconBtn').addEventListener('click', toggleTheme);
     $('soundBtn').addEventListener('click', function () {
       S.sound = !S.sound;
       paintSound();
@@ -1240,6 +1327,7 @@ body[data-screen="timer"] .notices{display:flex}
   /* ===== 起動 ===== */
   buildStatic();
   bind();
+  applyTheme(S.theme, false);
   paintSound();
   $('minInput').value = String(S.minutes);
   onMinutesChanged();
