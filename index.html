@@ -90,6 +90,18 @@ body[data-screen="end"] #end{display:flex}
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:2vw;flex:none;min-height:48px}
 .topbar-tools{display:flex;align-items:center;gap:clamp(14px,2vw,32px);flex:none}
 #soundBtn,#themeBtn{white-space:nowrap;flex:none}
+/* オン・オフのトグルスイッチ（右に寄せた丸がオン） */
+.switch{display:inline-flex;align-items:center;gap:.55em;min-height:48px;padding:0 .2em;background:transparent;border:0;border-radius:4px;font-size:clamp(16px,2.4vh,22px);font-weight:600;letter-spacing:.06em;color:var(--ink);white-space:nowrap}
+.switch:hover{background:var(--hover)}
+.switch-track{position:relative;flex:none;width:52px;height:30px;border-radius:15px;background:transparent;border:2px solid var(--ink-sub);transition:background-color .18s,border-color .18s}
+.switch-thumb{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--ink-sub);transition:transform .18s,background-color .18s}
+.switch[aria-checked="true"] .switch-track{background:var(--ink);border-color:var(--ink)}
+.switch[aria-checked="true"] .switch-thumb{transform:translateX(22px);background:var(--bg)}
+.switch-state{min-width:2.2em;font-size:.85em;color:var(--ink-sub)}
+.switch-sm{gap:.45em;min-height:48px;font-size:clamp(13px,1.8vh,16px);color:var(--ink-sub)}
+.switch-sm .switch-track{width:44px;height:26px;border-radius:13px}
+.switch-sm .switch-thumb{width:16px;height:16px}
+.switch-sm[aria-checked="true"] .switch-thumb{transform:translateX(18px)}
 .brand{margin:0;font-size:clamp(18px,3vh,28px);font-weight:700;letter-spacing:.12em}
 .setup-body{flex:1;display:flex;flex-direction:column;justify-content:center;justify-content:safe center;gap:3.2vh;width:100%;max-width:1400px;margin:0 auto;min-height:0}
 .setup-label{margin:0;font-size:clamp(20px,2.6vh,26px);color:var(--ink-sub);letter-spacing:.3em;font-weight:600}
@@ -156,13 +168,11 @@ body[data-screen="end"] #end{display:flex}
 /* 時間調整のつまみ（見た目は直径16px、当たり判定は直径56px） */
 .knob{position:absolute;width:56px;height:56px;margin:-28px 0 0 -28px;touch-action:none;cursor:grab;z-index:2;display:none;-webkit-tap-highlight-color:transparent}
 #timer.is-adjusting .knob{display:block}
-.knob[data-part="second"]{z-index:3}
 .knob-dot{position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:var(--bg);border:2.5px solid var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.4);transition:transform .12s}
 .knob.is-grab{cursor:grabbing}
 .knob.is-grab .knob-dot{transform:scale(1.25)}
 /* つまみ近くの札（色はそのパートの色） */
 .knob-tag{position:absolute;z-index:4;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;padding:.35em .7em .4em;border-radius:4px;white-space:nowrap;pointer-events:none;font-weight:700;line-height:1.2;box-shadow:0 2px 8px rgba(0,0,0,.3);background:var(--first);color:var(--first-ink);font-size:clamp(14px,2.4vh,20px)}
-.knob-tag[data-part="second"]{background:var(--second);color:var(--second-ink)}
 .knob-tag small{font-size:.72em;font-weight:600;letter-spacing:.04em}
 .readout{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:2.4vh;min-width:0;width:calc(min(16vw,30vh) * 2.95)} /* 幅を固定して、10:00→9:59 で円が横に動かないように */
 .clock{display:flex;font-size:min(16vw,30vh);line-height:.9;letter-spacing:-.02em;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;transition:color .3s}
@@ -186,15 +196,19 @@ body[data-screen="end"] #end{display:flex}
 .readout{position:relative}
 .adj{position:absolute;left:0;top:100%;margin-top:2vh;display:flex;flex-direction:column;gap:8px;font-size:max(15px,min(1.9vw,3.2vh));font-weight:600;color:var(--ink-sub);white-space:nowrap}
 .adj-row{display:flex;align-items:center;gap:.45em;min-height:44px}
+.adj-part{display:inline-flex;align-items:center;gap:.4em}
 .adj-dot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--first)}
-.adj-row[data-part="second"] .adj-dot{background:var(--second)}
-.adj-name{letter-spacing:.12em;margin-right:.2em}
+.adj-part.is-second .adj-dot{background:var(--second)}
+.adj-name{letter-spacing:.12em}
+.adj-part .adj-len{color:var(--ink)}
+.adj-note{margin:0;font-size:.85em;letter-spacing:.04em}
 .adj-btn{flex:none;width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:4px;color:var(--ink);padding:0}
 .adj-btn:hover:not(:disabled),.adj-btn:active:not(:disabled){background:var(--hover)}
 .adj-btn:disabled{opacity:.28;cursor:not-allowed}
 .adj-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
-.adj-len{min-width:3.4em;text-align:center;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
-.adj-row.is-done{opacity:.5}
+.adj-btn svg.ic-fill{width:24px;height:24px}
+.adj-btn svg.ic-fill path{fill:currentColor;stroke:none}
+.adj-len{min-width:2.6em;text-align:center;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 /* 調整モード中のお知らせは、調整の段に重ならないよう上に出す */
 body.is-adjusting .toast{bottom:auto;top:calc(4vh + 60px)}
 
@@ -347,6 +361,9 @@ body[data-screen="timer"] .notices{display:flex}
   .tools .icon-btn{width:44px;height:44px}
   .phase{flex-wrap:wrap;gap:4px 1em;min-width:0}
   .topbar{flex-wrap:wrap;gap:8px 16px}
+  /* スイッチは状態の文字と、タイマー画面の「ダーク」の文字を省いて幅を詰める（見出しとボタン列が重ならないように） */
+  .switch-state,.switch-sm .switch-label{display:none}
+  .topbar-tools{gap:12px}
   .end-label{color:var(--ink)}
   .notices{top:76px;max-width:calc(100vw - 32px)}
   .turn{padding:20px 16px 16px}
@@ -381,7 +398,7 @@ body[data-screen="timer"] .notices{display:flex}
   .turn{transform:none;opacity:0;transition:opacity 200ms linear,visibility 0s linear 200ms}
   .turn.is-open{opacity:1;transform:none;transition:opacity 200ms linear,visibility 0s}
   .q,.turn.is-open .q{transform:none;opacity:1;transition:none}
-  .fill-a,.phase-label,.preset,.split-bar span,.knob-dot{transition:none}
+  .fill-a,.phase-label,.preset,.split-bar span,.knob-dot,.switch-track,.switch-thumb{transition:none}
   body[data-screen="end"] #end{animation:none}
 }
 </style>
@@ -393,8 +410,8 @@ body[data-screen="timer"] .notices{display:flex}
   <header class="topbar">
     <h1 class="brand">折り返しタイマー</h1>
     <div class="topbar-tools">
-      <button id="soundBtn" class="textbtn" type="button" aria-pressed="true">音 <span id="soundState">オン</span></button>
-      <button id="themeBtn" class="textbtn" type="button">表示 <span id="themeState">ダーク</span></button>
+      <button id="soundBtn" class="switch" type="button" role="switch" aria-checked="true"><span class="switch-label">音</span><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span><span class="switch-state" id="soundState" aria-hidden="true">オン</span></button>
+      <button id="themeBtn" class="switch" type="button" role="switch" aria-checked="true"><span class="switch-label">ダークモード</span><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span><span class="switch-state" id="themeState" aria-hidden="true">オン</span></button>
     </div>
   </header>
   <section class="setup-body">
@@ -434,8 +451,8 @@ body[data-screen="timer"] .notices{display:flex}
       <span class="pause-note" id="pauseNote" hidden>一時停止中</span>
     </div>
     <div class="tools">
-      <button class="icon-btn" id="adjBtn" type="button" aria-label="時間調整" title="時間調整（前半・後半を1分ずつ増減）" aria-pressed="false" aria-expanded="false" aria-controls="adjPanel"></button>
-      <button class="icon-btn" id="themeIconBtn" type="button"></button>
+      <button class="icon-btn" id="adjBtn" type="button" aria-label="配分の調整" title="配分の調整（全体の時間はそのまま、折り返しの位置を1分ずつ動かす）" aria-pressed="false" aria-expanded="false" aria-controls="adjPanel"></button>
+      <button id="themeIconBtn" class="switch switch-sm" type="button" role="switch" aria-checked="true" aria-label="ダークモード"><span class="switch-label">ダーク</span><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span></button>
       <button class="icon-btn" id="pauseBtn" type="button" aria-label="一時停止" title="一時停止（Space）"></button>
       <button class="icon-btn" id="resetBtn" type="button" aria-label="リセット" title="リセット（2回押し）"></button>
       <button class="icon-btn" id="fsBtn" type="button" aria-label="全画面" title="全画面（F）"></button>
@@ -448,19 +465,14 @@ body[data-screen="timer"] .notices{display:flex}
       <p class="clock-label" id="clockLabel" aria-hidden="true">折り返しまで</p>
       <div class="clock" id="clock" role="timer" aria-live="off"></div>
       <p class="timer-sub" id="timerSub"><span>終了まで</span><b class="num" id="subTime"></b></p>
-      <div class="adj" id="adjPanel" role="group" aria-label="時間調整" hidden>
-        <div class="adj-row" data-part="first">
-          <span class="adj-dot" aria-hidden="true"></span><span class="adj-name">前半</span>
-          <button class="adj-btn" type="button" data-part="first" data-d="-1" aria-label="前半を1分減らす"></button>
-          <span class="adj-len" id="adjFirst"></span>
-          <button class="adj-btn" type="button" data-part="first" data-d="1" aria-label="前半を1分増やす"></button>
+      <div class="adj" id="adjPanel" role="group" aria-label="前半・後半の配分の調整" hidden>
+        <div class="adj-row">
+          <span class="adj-part is-first"><span class="adj-dot" aria-hidden="true"></span><span class="adj-name">前半</span><span class="adj-len num" id="adjFirst"></span></span>
+          <button class="adj-btn" id="adjLeft" type="button" data-d="-1" aria-label="前半を1分短く、後半を1分長く"></button>
+          <button class="adj-btn" id="adjRight" type="button" data-d="1" aria-label="前半を1分長く、後半を1分短く"></button>
+          <span class="adj-part is-second"><span class="adj-dot" aria-hidden="true"></span><span class="adj-name">後半</span><span class="adj-len num" id="adjSecond"></span></span>
         </div>
-        <div class="adj-row" data-part="second">
-          <span class="adj-dot" aria-hidden="true"></span><span class="adj-name">後半</span>
-          <button class="adj-btn" type="button" data-part="second" data-d="-1" aria-label="後半を1分減らす"></button>
-          <span class="adj-len" id="adjSecond"></span>
-          <button class="adj-btn" type="button" data-part="second" data-d="1" aria-label="後半を1分増やす"></button>
-        </div>
+        <p class="adj-note" id="adjNote" aria-live="polite"></p>
       </div>
     </div>
   </div>
@@ -545,7 +557,6 @@ body[data-screen="timer"] .notices{display:flex}
   var MIN_LEFT_MS = 30000;           // 減らしても、そのパートの残りは30秒以上残す
   var HALF_STEP_MS = 30000;          // 長さはすべて30秒単位
   var ADJ_IDLE_MS = 8000;            // 調整モードは最後の操作から8秒で閉じる
-  var DRAG_FIT_DEG = 340;            // ドラッグで伸ばして1周に収まらなくなったら、残りがこの角度になるよう縮尺を広げる
   var DRAG_DEAD_RATIO = 0.3;         // 円の中心から半径の3割より内側の指の動きは無視（角度が180度とぶため）
   var TAG_GAP_PX = 16;               // つまみと札のすき間
   var ANIM_DROP_MS = 300;
@@ -607,7 +618,6 @@ body[data-screen="timer"] .notices{display:flex}
     '</svg>';
   // 本体の円だけに重ねる、ドラッグ用のつまみと札（小窓には置かない）
   var KNOB_HTML =
-    '<div class="knob" data-part="second" aria-hidden="true"><span class="knob-dot"></span></div>' +
     '<div class="knob" data-part="first" aria-hidden="true"><span class="knob-dot"></span></div>' +
     '<div class="knob-tag" id="knobTag" aria-hidden="true" hidden><span id="knobTagMain"></span><small id="knobTagSub"></small></div>';
 
@@ -990,15 +1000,12 @@ body[data-screen="timer"] .notices{display:flex}
     $('adjBtn').innerHTML = ICONS.adj;
     $('splitLeft').innerHTML = ICONS.left;
     $('splitRight').innerHTML = ICONS.right;
-    var adjBtns = document.querySelectorAll('.adj-btn');
-    for (var i = 0; i < adjBtns.length; i++) {
-      adjBtns[i].innerHTML = adjBtns[i].getAttribute('data-d') === '1' ? ICONS.plus : ICONS.minus;
-    }
+    $('adjLeft').innerHTML = ICONS.left;
+    $('adjRight').innerHTML = ICONS.right;
     $('pauseBtn').innerHTML = ICONS.pause;
     $('resetBtn').innerHTML = ICONS.reset;
     $('fsBtn').innerHTML = ICONS.fs;
     $('pipBtn').innerHTML = ICONS.pip;
-    $('themeIconBtn').innerHTML = ICONS.theme;
     if (!('documentPictureInPicture' in window)) $('pipBtn').hidden = true;
   }
 
@@ -1071,11 +1078,10 @@ body[data-screen="timer"] .notices{display:flex}
       try { pip.win.document.documentElement.setAttribute('data-theme', S.theme); } catch (e) { /* noop */ }
     }
     var dark = S.theme === 'dark';
-    setText($('themeState'), dark ? 'ダーク' : 'ライト');
-    var label = dark ? 'ライト表示に切り替え' : 'ダーク表示に切り替え';
-    $('themeBtn').setAttribute('aria-label', '表示 ' + (dark ? 'ダーク' : 'ライト') + '（' + label + '）');
-    $('themeIconBtn').setAttribute('aria-label', label);
-    $('themeIconBtn').title = label;
+    setText($('themeState'), dark ? 'オン' : 'オフ');
+    $('themeBtn').setAttribute('aria-checked', String(dark));
+    $('themeIconBtn').setAttribute('aria-checked', String(dark));
+    $('themeIconBtn').title = 'ダークモード ' + (dark ? 'オン' : 'オフ');
     if (announce) {
       saveSettings();
       toast(dark ? 'ダーク表示にしました' : 'ライト表示にしました', 2000);
@@ -1084,7 +1090,7 @@ body[data-screen="timer"] .notices{display:flex}
   function toggleTheme() { applyTheme(S.theme === 'dark' ? 'light' : 'dark', true); }
 
   function paintSound() {
-    $('soundBtn').setAttribute('aria-pressed', String(S.sound));
+    $('soundBtn').setAttribute('aria-checked', String(S.sound));
     setText($('soundState'), S.sound ? 'オン' : 'オフ');
   }
 
@@ -1136,64 +1142,43 @@ body[data-screen="timer"] .notices{display:flex}
     endTimeout = setTimeout(tick, Math.max(0, (totalMs() - e) / SPEED) + 15);
   }
 
-  /* ===== 実行中の時間調整（ボタン・ドラッグ共通） ===== */
-  // part のそのパートの残り（前半は折り返しまで、後半は後半の残り）
-  function partLeft(part, e) {
-    if (part === 'first') return S.firstMs - e;
-    return (S.turnFired || e >= S.firstMs) ? totalMs() - e : S.secondMs;
-  }
-  // 今いくら増減できるか（分単位の kMin〜kMax）。locked は前半が済んでいる・終了画面など
-  function partRange(part, e) {
-    if (S.screen !== 'timer' || (part === 'first' && (S.turnFired || e >= S.firstMs))) {
-      return { locked: true, kMin: 0, kMax: 0 };
-    }
-    var len = part === 'first' ? S.firstMs : S.secondMs;
-    var left = partLeft(part, e);
-    var kMin = Math.max(Math.ceil((MIN_PART_MS - len) / STEP_MS), Math.ceil((MIN_LEFT_MS - left) / STEP_MS));
-    var kMax = Math.floor((MAX_MS - totalMs()) / STEP_MS);
+  /* ===== 実行中の配分の調整（ボタン・ドラッグ共通） ===== */
+  // 全体の長さは変えず、折り返しの位置だけを動かす（前半が長くなった分だけ後半が短くなる）。
+  // 動かせる幅を分単位の kMin〜kMax で返す（＋で前半が長く）。locked は後半に入った・終了画面など
+  function splitRange(e) {
+    if (S.screen !== 'timer' || S.turnFired || e >= S.firstMs) return { locked: true, kMin: 0, kMax: 0 };
+    var kMin = Math.max(Math.ceil((MIN_PART_MS - S.firstMs) / STEP_MS), Math.ceil((MIN_LEFT_MS - (S.firstMs - e)) / STEP_MS));
+    var kMax = Math.floor((S.secondMs - MIN_PART_MS) / STEP_MS);
     return { locked: false, kMin: Math.min(0, kMin), kMax: Math.max(0, kMax) };
   }
   // 調整はすべてここを通す。変更→schedule()→saveRun()→render()。
-  // 今の位置（経過時間）は動かさない。減らしてもその場で折り返し・終了にはならない（残り30秒以上を保つ）
-  function adjust(part, deltaMs, opts) {
+  // 今の位置（経過時間）と終わりの時刻は動かさない。前にずらしてもその場で折り返しにはならない（残り30秒以上を保つ）
+  function shiftTurn(deltaMs, opts) {
     opts = opts || {};
-    if (part !== 'first' && part !== 'second') return false;
     var k = Math.round(deltaMs / STEP_MS);
     if (!k) return false;
-    var e = elapsed();
-    var r = partRange(part, e);
+    var r = splitRange(elapsed());
     var why = '';
-    if (r.locked) why = part === 'first' ? '前半はもう終わっています' : '';
-    else if (k > r.kMax) why = '合計は' + MAX_MINUTES + '分までです';
-    else if (k < r.kMin) {
-      var len = part === 'first' ? S.firstMs : S.secondMs;
-      why = len + k * STEP_MS < MIN_PART_MS ? '1分より短くはできません' : '残りが短いので、これ以上減らせません';
-    }
+    if (r.locked) why = S.screen === 'timer' ? '後半に入ったので、配分はもう変えられません' : '';
+    else if (k > r.kMax) why = '後半は1分より短くはできません';
+    else if (k < r.kMin) why = S.firstMs + k * STEP_MS < MIN_PART_MS ? '前半は1分より短くはできません' : '折り返しが近いので、これ以上前にできません';
     if (why || r.locked) {
       if (!opts.quiet && why) toast(why, ADJ_TOAST_MS);
       return false;
     }
-    if (part === 'first') S.firstMs += k * STEP_MS;
-    else S.secondMs += k * STEP_MS;
+    S.firstMs += k * STEP_MS;
+    S.secondMs -= k * STEP_MS;
     schedule();
     saveRun();
     render();
-    if (!opts.quiet) adjustToast(part, k * STEP_MS);
+    if (!opts.quiet) adjustToast();
     return true;
   }
-  // 例「後半 ＋1分 → 終了 10:42」。一時停止中は時刻の代わりに残り時間
-  function adjustToast(part, deltaMs) {
-    var n = Math.abs(deltaMs) / STEP_MS;
-    var head = (part === 'first' ? '前半 ' : '後半 ') + (deltaMs > 0 ? '＋' : '−') + n + '分';
-    var e = elapsed();
-    var rem = totalMs() - e;
-    var tail;
-    if (S.paused) {
-      tail = part === 'first' ? '折り返しまで ' + fmt(S.firstMs - e) + '・残り ' + fmt(rem) : '残り ' + fmt(rem);
-    } else {
-      tail = part === 'first' ? '折り返し ' + clockAfter(S.firstMs - e) + '・終了 ' + clockAfter(rem) : '終了 ' + clockAfter(rem);
-    }
-    toast(head + ' → ' + tail, ADJ_TOAST_MS);
+  // 例「前半 8分・後半 7分 → 折り返し 10:42（全体 15分のまま）」。一時停止中は時刻の代わりに残り時間
+  function adjustToast() {
+    var left = S.firstMs - elapsed();
+    var tail = S.paused ? '折り返しまで ' + fmt(left) : '折り返し ' + clockAfter(left);
+    toast('前半 ' + fmtLen(S.firstMs) + '・後半 ' + fmtLen(S.secondMs) + ' → ' + tail + '（全体 ' + fmtLen(totalMs()) + 'のまま）', ADJ_TOAST_MS);
   }
 
   function togglePause() {
@@ -1426,7 +1411,6 @@ body[data-screen="timer"] .notices{display:flex}
   }
   function paintKnobs(vm, g, view, svg) {
     var dial = $('dial');
-    var kSecond = dial.querySelector('.knob[data-part="second"]');
     var kFirst = dial.querySelector('.knob[data-part="first"]');
     var tag = $('knobTag');
     if (!adjusting) {
@@ -1434,25 +1418,23 @@ body[data-screen="timer"] .notices{display:flex}
       paintMinuteTicks(svg, 0, 0, 0, 0, 0);
       return;
     }
-    placeAt(kSecond, g.endA, DIAL_R);
     placeAt(kFirst, g.turnA, DIAL_R);
-    // 後半に入ったら前半のつまみは出さない
-    var firstOk = !partRange('first', vm.e).locked;
-    kFirst.hidden = !firstOk;
+    // 後半に入ったら折り返しのつまみは出さない
+    kFirst.hidden = splitRange(vm.e).locked;
     if (!drag) {
       tag.hidden = true;
       paintMinuteTicks(svg, 0, 0, 0, 0, 0);
       return;
     }
-    var knobA = drag.part === 'first' ? g.turnA : g.endA;
-    // 札：「前半 12分」＋小さく「終了 10:42」（一時停止中は残り時間）
-    var len = drag.part === 'first' ? S.firstMs : S.secondMs;
-    setText($('knobTagMain'), (drag.part === 'first' ? '前半 ' : '後半 ') + fmtLen(len));
-    var sub = S.paused ? '残り ' + fmt(vm.rem) : '終了 ' + clockAfter(vm.rem);
-    if (drag.limit === 'max') sub = '上限（合計' + MAX_MINUTES + '分まで）';
-    else if (drag.limit === 'min') sub = 'これ以上減らせません';
+    var knobA = g.turnA;
+    // 札：「前半 8分・後半 7分」＋小さく「折り返し 10:42」（一時停止中は折り返しまでの時間）
+    setText($('knobTagMain'), '前半 ' + fmtLen(S.firstMs) + '・後半 ' + fmtLen(S.secondMs));
+    var left = S.firstMs - vm.e;
+    var sub = S.paused ? '折り返しまで ' + fmt(left) : '折り返し ' + clockAfter(left);
+    if (drag.limit === 'max') sub = '後半は最低1分です';
+    else if (drag.limit === 'min') sub = 'これ以上前にできません';
     setText($('knobTagSub'), sub);
-    tag.setAttribute('data-part', drag.part);
+    tag.setAttribute('data-part', 'first');
     tag.hidden = false;
     placeTag(tag, knobA, dial);
     // 1分ごとの目盛り（つまみが止まりうる位置）。長さは6px相当
@@ -1497,23 +1479,18 @@ body[data-screen="timer"] .notices{display:flex}
       closeAdjust();
     }, ADJ_IDLE_MS);
   }
-  // 「● 前半 [−] 12分 [＋]」の段。後半に入ったら前半は「済」
+  // 「● 前半 8分 ◀ ▶ ● 後半 7分」の段と、その下の一言
   function paintAdjust(vm) {
     if (!adjusting) return;
-    var rows = $('adjPanel').querySelectorAll('.adj-row');
-    for (var i = 0; i < rows.length; i++) {
-      var part = rows[i].getAttribute('data-part');
-      var r = partRange(part, vm.e);
-      var done = part === 'first' && vm.second;
-      rows[i].classList.toggle('is-done', done);
-      setText($(part === 'first' ? 'adjFirst' : 'adjSecond'), done ? '済' : fmtLen(part === 'first' ? S.firstMs : S.secondMs));
-      var btns = rows[i].querySelectorAll('.adj-btn');
-      for (var j = 0; j < btns.length; j++) {
-        var inc = btns[j].getAttribute('data-d') === '1';
-        btns[j].hidden = done;
-        btns[j].disabled = r.locked || (inc ? r.kMax < 1 : r.kMin > -1);
-      }
-    }
+    var r = splitRange(vm.e);
+    setText($('adjFirst'), fmtLen(S.firstMs));
+    setText($('adjSecond'), fmtLen(S.secondMs));
+    $('adjLeft').disabled = r.locked || r.kMin > -1;
+    $('adjRight').disabled = r.locked || r.kMax < 1;
+    var note = '全体 ' + fmtLen(totalMs()) + ' はそのまま';
+    if (r.locked) note = '後半に入ったので、配分は変えられません';
+    else if (r.kMin === 0 && r.kMax === 0 && S.firstMs - vm.e >= MIN_LEFT_MS + STEP_MS) note = '全体が短いので、配分は変えられません（前半・後半とも最低1分）';
+    setText($('adjNote'), note);
   }
 
   /* ===== ドラッグ（調整モード中のみ。つまんだ所から先がまるごと動く） ===== */
@@ -1526,26 +1503,25 @@ body[data-screen="timer"] .notices{display:flex}
     var rPx = rc.width / 2 * DIAL_R / (DIAL_VIEW / 2); // 外周の半径（px）
     return { a: a < 0 ? a + 360 : a, center: Math.sqrt(dx * dx + dy * dy) < rPx * DRAG_DEAD_RATIO };
   }
-  // つまみから今の位置までの残り（前半のつまみは折り返しまで、終わりのつまみは終了まで）
-  function knobLeft(part, vm) { return part === 'first' ? partLeft('first', vm.e) : vm.rem; }
+  // つまみ（折り返しの位置）から今の位置までの残り
+  function knobLeft(vm) { return S.firstMs - vm.e; }
   function onKnobDown(ev) {
     var el = ev.currentTarget;
     var part = el.getAttribute('data-part');
     if (!adjusting || drag || S.screen !== 'timer') return;
     if (ev.button !== undefined && ev.button !== 0) return;
     var vm = viewModel();
-    if (partRange(part, vm.e).locked) return;
+    if (splitRange(vm.e).locked) return;
     ev.preventDefault();
     try { el.setPointerCapture(ev.pointerId); } catch (e) { /* noop */ }
     // つかんだ瞬間は見た目を変えない：今の見え方の縮尺と位置をそのまま引き継ぐ
     var view = currentView(vm);
     anim = null;
     var nowA = view.endA + vm.rem * 360 / view.scale;
-    var knobA = nowA - knobLeft(part, vm) * 360 / view.scale;
+    var knobA = nowA - knobLeft(vm) * 360 / view.scale;
     var p = pointerPolar(ev);
     drag = { part: part, el: el, id: ev.pointerId, scale: view.scale, nowA: nowA, raw: p.a, acc: p.a,
-             offset: knobA - p.a, startLen: part === 'first' ? S.firstMs : S.secondMs,
-             fitDeg: Math.max(DRAG_FIT_DEG, vm.rem * 360 / view.scale), limit: '' };
+             offset: knobA - p.a, startLen: S.firstMs, limit: '' };
     el.classList.add('is-grab');
     bumpAdjust();
     render();
@@ -1563,28 +1539,21 @@ body[data-screen="timer"] .notices{display:flex}
     drag.acc += d;
     var a = drag.acc + drag.offset;    // つまみを置きたい角度（指の下）
     var vm = viewModel();
-    var r = partRange(drag.part, vm.e);
+    var r = splitRange(vm.e);
     if (r.locked) return;
-    // 今の位置（nowA）から a までの角度ぶんを、そのつまみまでの残り時間とみなす
-    var have = knobLeft(drag.part, vm);
+    // 今の位置（nowA）から a までの角度ぶんを、折り返しまでの残り時間とみなす（全体は変わらないので縮尺も固定）
+    var have = knobLeft(vm);
     var want = (drag.nowA - a) * drag.scale / 360;
     var kWant = Math.round((want - have) / STEP_MS);
     var k = Math.max(r.kMin, Math.min(r.kMax, kWant));
     // 上限・下限に当たったまま同じ向きへ押しているあいだは、半目盛り未満の動きでも札の表示を保つ
     var push = (want - have) / STEP_MS;
     drag.limit = (kWant > k || (push > 0 && k === r.kMax)) ? 'max' : ((kWant < k || (push < 0 && k === r.kMin)) ? 'min' : '');
-    if (k !== 0) adjust(drag.part, k * STEP_MS, { quiet: true });
+    if (k !== 0) shiftTurn(k * STEP_MS, { quiet: true });
     if (drag.limit) {
       // 上限・下限で止まったら、指の角度の合計をつまみの位置に合わせ直す（戻し始めたらすぐ付いてくるように）
-      a = drag.nowA - knobLeft(drag.part, viewModel()) * 360 / drag.scale;
+      a = drag.nowA - knobLeft(viewModel()) * 360 / drag.scale;
       drag.acc = a - drag.offset;
-    }
-    // 伸ばして1周に収まらなくなったときだけ縮尺を広げ、つかんだつまみが指の下に残るよう今の位置を取り直す
-    vm = viewModel();
-    if (vm.rem * 360 / drag.scale > drag.fitDeg) {
-      drag.scale = vm.rem * 360 / DRAG_FIT_DEG;
-      drag.fitDeg = DRAG_FIT_DEG;
-      drag.nowA = a + knobLeft(drag.part, vm) * 360 / drag.scale;
     }
     bumpAdjust();
     render();
@@ -1598,8 +1567,7 @@ body[data-screen="timer"] .notices{display:flex}
     drag = null;
     d.el.classList.remove('is-grab');
     try { if (d.el.hasPointerCapture && d.el.hasPointerCapture(d.id)) d.el.releasePointerCapture(d.id); } catch (e) { /* noop */ }
-    var len = d.part === 'first' ? S.firstMs : S.secondMs;
-    if (!silent && len !== d.startLen && S.screen === 'timer') adjustToast(d.part, len - d.startLen);
+    if (!silent && S.firstMs !== d.startLen && S.screen === 'timer') adjustToast();
     if (!silent) {
       startAnim(from, ANIM_DROP_MS); // 全体＝1周に描き直す
       bumpAdjust();
@@ -1805,14 +1773,14 @@ body[data-screen="timer"] .notices{display:flex}
       if (!isNaN(n)) start(n, S.setupFirstMs);
     });
 
-    // 時間調整：±ボタンで調整モードを開け閉め。＋−はすべて adjust() を通す
+    // 配分の調整：±ボタンで調整モードを開け閉め。◀▶はすべて shiftTurn() を通す
     $('adjBtn').addEventListener('click', function () {
       if (adjusting) closeAdjust(); else openAdjust();
     });
     $('adjPanel').addEventListener('click', function (ev) {
       var b = ev.target.closest && ev.target.closest('.adj-btn');
       if (!b || b.disabled) return;
-      adjust(b.getAttribute('data-part'), Number(b.getAttribute('data-d')) * STEP_MS);
+      shiftTurn(Number(b.getAttribute('data-d')) * STEP_MS);
       bumpAdjust();
     });
     var knobs = $('dial').querySelectorAll('.knob');
@@ -1853,7 +1821,9 @@ body[data-screen="timer"] .notices{display:flex}
         return;
       }
       if (inInput) return;
+      var onSwitch = ev.target && ev.target.closest && ev.target.closest('.switch');
       if (ev.code === 'Space' || ev.key === ' ') {
+        if (onSwitch) return; // スイッチ上の Space はスイッチの切り替え（一時停止にしない）
         if (S.screen === 'timer') { ev.preventDefault(); togglePause(); }
         return;
       }
@@ -1861,7 +1831,8 @@ body[data-screen="timer"] .notices{display:flex}
     });
     // ボタンにフォーカスがあるとき、Space の keyup でボタンが押されないように
     document.addEventListener('keyup', function (ev) {
-      if ((ev.code === 'Space' || ev.key === ' ') && S.screen === 'timer') ev.preventDefault();
+      if ((ev.code === 'Space' || ev.key === ' ') && S.screen === 'timer' &&
+          !(ev.target && ev.target.closest && ev.target.closest('.switch'))) ev.preventDefault();
     });
 
     document.addEventListener('fullscreenchange', paintFsBtn);
@@ -1957,7 +1928,7 @@ body[data-screen="timer"] .notices{display:flex}
 
   // 倍速デバッグ時だけ、確認用に状態を公開
   if (SPEED !== 1) {
-    window.__oritimer = { state: S, tick: tick, fmt: fmt, speed: SPEED, adjust: adjust, partRange: partRange,
+    window.__oritimer = { state: S, tick: tick, fmt: fmt, speed: SPEED, shiftTurn: shiftTurn, splitRange: splitRange,
       totalMs: totalMs, elapsed: elapsed, openAdjust: openAdjust, isAdjusting: function () { return adjusting; } };
   }
 })();
