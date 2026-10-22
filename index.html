@@ -196,19 +196,16 @@ body[data-screen="end"] #end{display:flex}
 .readout{position:relative}
 .adj{position:absolute;left:0;top:100%;margin-top:2vh;display:flex;flex-direction:column;gap:8px;font-size:max(15px,min(1.9vw,3.2vh));font-weight:600;color:var(--ink-sub);white-space:nowrap}
 .adj-row{display:flex;align-items:center;gap:.45em;min-height:44px}
-.adj-part{display:inline-flex;align-items:center;gap:.4em}
 .adj-dot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--first)}
-.adj-part.is-second .adj-dot{background:var(--second)}
-.adj-name{letter-spacing:.12em}
-.adj-part .adj-len{color:var(--ink)}
-.adj-note{margin:0;font-size:.85em;letter-spacing:.04em}
+.adj-row[data-part="second"] .adj-dot{background:var(--second)}
+.adj-name{letter-spacing:.12em;margin-right:.2em}
+.adj-row.is-done{opacity:.5}
+.adj-note{margin:0;font-size:.85em;letter-spacing:.04em;white-space:normal}
 .adj-btn{flex:none;width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:4px;color:var(--ink);padding:0}
 .adj-btn:hover:not(:disabled),.adj-btn:active:not(:disabled){background:var(--hover)}
 .adj-btn:disabled{opacity:.28;cursor:not-allowed}
 .adj-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
-.adj-btn svg.ic-fill{width:24px;height:24px}
-.adj-btn svg.ic-fill path{fill:currentColor;stroke:none}
-.adj-len{min-width:2.6em;text-align:center;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.adj-len{min-width:3.4em;text-align:center;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 /* 調整モード中のお知らせは、調整の段に重ならないよう上に出す */
 body.is-adjusting .toast{bottom:auto;top:calc(4vh + 60px)}
 
@@ -361,8 +358,8 @@ body[data-screen="timer"] .notices{display:flex}
   .tools .icon-btn{width:44px;height:44px}
   .phase{flex-wrap:wrap;gap:4px 1em;min-width:0}
   .topbar{flex-wrap:wrap;gap:8px 16px}
-  /* スイッチは状態の文字と、タイマー画面の「ダーク」の文字を省いて幅を詰める（見出しとボタン列が重ならないように） */
-  .switch-state,.switch-sm .switch-label{display:none}
+  /* スイッチは状態の文字（オン/オフ）を省いて幅を詰める */
+  .switch-state{display:none}
   .topbar-tools{gap:12px}
   .end-label{color:var(--ink)}
   .notices{top:76px;max-width:calc(100vw - 32px)}
@@ -391,6 +388,13 @@ body[data-screen="timer"] .notices{display:flex}
   .tip-head{font-size:clamp(17px,5vw,26px)}
   .tip-text{font-size:clamp(15px,4.4vw,22px);line-height:1.5}
   .end-actions{padding:10px 16px 14px}
+}
+/* スマホ幅：タイマー画面のボタン列を見出しの下の段に回し、横いっぱいに並べる（見出しと重ならないように） */
+@media (max-width:520px){
+  .timer-head{flex-direction:column;align-items:stretch;gap:6px}
+  .tools{justify-content:space-between;gap:0}
+  .tools .icon-btn{width:40px}
+  .switch-sm{padding:0 .1em;gap:.3em}
 }
 
 /* ---------- 動きを減らす設定 ---------- */
@@ -451,7 +455,8 @@ body[data-screen="timer"] .notices{display:flex}
       <span class="pause-note" id="pauseNote" hidden>一時停止中</span>
     </div>
     <div class="tools">
-      <button class="icon-btn" id="adjBtn" type="button" aria-label="配分の調整" title="配分の調整（全体の時間はそのまま、折り返しの位置を1分ずつ動かす）" aria-pressed="false" aria-expanded="false" aria-controls="adjPanel"></button>
+      <button class="icon-btn" id="adjBtn" type="button" aria-label="時間調整" title="時間調整（前半・後半を1分ずつ増減。円の「折」を動かすと全体はそのまま配分だけ変わる）" aria-pressed="false" aria-expanded="false" aria-controls="adjPanel"></button>
+      <button id="soundToolBtn" class="switch switch-sm" type="button" role="switch" aria-checked="true" aria-label="音"><span class="switch-label">音</span><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span></button>
       <button id="themeIconBtn" class="switch switch-sm" type="button" role="switch" aria-checked="true" aria-label="ダークモード"><span class="switch-label">ダーク</span><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span></button>
       <button class="icon-btn" id="pauseBtn" type="button" aria-label="一時停止" title="一時停止（Space）"></button>
       <button class="icon-btn" id="resetBtn" type="button" aria-label="リセット" title="リセット（2回押し）"></button>
@@ -465,12 +470,18 @@ body[data-screen="timer"] .notices{display:flex}
       <p class="clock-label" id="clockLabel" aria-hidden="true">折り返しまで</p>
       <div class="clock" id="clock" role="timer" aria-live="off"></div>
       <p class="timer-sub" id="timerSub"><span>終了まで</span><b class="num" id="subTime"></b></p>
-      <div class="adj" id="adjPanel" role="group" aria-label="前半・後半の配分の調整" hidden>
-        <div class="adj-row">
-          <span class="adj-part is-first"><span class="adj-dot" aria-hidden="true"></span><span class="adj-name">前半</span><span class="adj-len num" id="adjFirst"></span></span>
-          <button class="adj-btn" id="adjLeft" type="button" data-d="-1" aria-label="前半を1分短く、後半を1分長く"></button>
-          <button class="adj-btn" id="adjRight" type="button" data-d="1" aria-label="前半を1分長く、後半を1分短く"></button>
-          <span class="adj-part is-second"><span class="adj-dot" aria-hidden="true"></span><span class="adj-name">後半</span><span class="adj-len num" id="adjSecond"></span></span>
+      <div class="adj" id="adjPanel" role="group" aria-label="時間調整" hidden>
+        <div class="adj-row" data-part="first">
+          <span class="adj-dot" aria-hidden="true"></span><span class="adj-name">前半</span>
+          <button class="adj-btn" type="button" data-part="first" data-d="-1" aria-label="前半を1分減らす"></button>
+          <span class="adj-len" id="adjFirst"></span>
+          <button class="adj-btn" type="button" data-part="first" data-d="1" aria-label="前半を1分増やす"></button>
+        </div>
+        <div class="adj-row" data-part="second">
+          <span class="adj-dot" aria-hidden="true"></span><span class="adj-name">後半</span>
+          <button class="adj-btn" type="button" data-part="second" data-d="-1" aria-label="後半を1分減らす"></button>
+          <span class="adj-len" id="adjSecond"></span>
+          <button class="adj-btn" type="button" data-part="second" data-d="1" aria-label="後半を1分増やす"></button>
         </div>
         <p class="adj-note" id="adjNote" aria-live="polite"></p>
       </div>
@@ -1000,8 +1011,10 @@ body[data-screen="timer"] .notices{display:flex}
     $('adjBtn').innerHTML = ICONS.adj;
     $('splitLeft').innerHTML = ICONS.left;
     $('splitRight').innerHTML = ICONS.right;
-    $('adjLeft').innerHTML = ICONS.left;
-    $('adjRight').innerHTML = ICONS.right;
+    var adjBtns = document.querySelectorAll('.adj-btn');
+    for (var i = 0; i < adjBtns.length; i++) {
+      adjBtns[i].innerHTML = adjBtns[i].getAttribute('data-d') === '1' ? ICONS.plus : ICONS.minus;
+    }
     $('pauseBtn').innerHTML = ICONS.pause;
     $('resetBtn').innerHTML = ICONS.reset;
     $('fsBtn').innerHTML = ICONS.fs;
@@ -1091,6 +1104,8 @@ body[data-screen="timer"] .notices{display:flex}
 
   function paintSound() {
     $('soundBtn').setAttribute('aria-checked', String(S.sound));
+    $('soundToolBtn').setAttribute('aria-checked', String(S.sound));
+    $('soundToolBtn').title = '音 ' + (S.sound ? 'オン' : 'オフ');
     setText($('soundState'), S.sound ? 'オン' : 'オフ');
   }
 
@@ -1142,8 +1157,68 @@ body[data-screen="timer"] .notices{display:flex}
     endTimeout = setTimeout(tick, Math.max(0, (totalMs() - e) / SPEED) + 15);
   }
 
-  /* ===== 実行中の配分の調整（ボタン・ドラッグ共通） ===== */
-  // 全体の長さは変えず、折り返しの位置だけを動かす（前半が長くなった分だけ後半が短くなる）。
+  /* ===== 実行中の時間調整 ===== */
+  // ＋−ボタン：前半・後半をそれぞれ1分ずつ増減する（全体もそのぶん変わる）
+  // part のそのパートの残り（前半は折り返しまで、後半は後半の残り）
+  function partLeft(part, e) {
+    if (part === 'first') return S.firstMs - e;
+    return (S.turnFired || e >= S.firstMs) ? totalMs() - e : S.secondMs;
+  }
+  // 今いくら増減できるか（分単位の kMin〜kMax）。locked は前半が済んでいる・終了画面など
+  function partRange(part, e) {
+    if (S.screen !== 'timer' || (part === 'first' && (S.turnFired || e >= S.firstMs))) {
+      return { locked: true, kMin: 0, kMax: 0 };
+    }
+    var len = part === 'first' ? S.firstMs : S.secondMs;
+    var left = partLeft(part, e);
+    var kMin = Math.max(Math.ceil((MIN_PART_MS - len) / STEP_MS), Math.ceil((MIN_LEFT_MS - left) / STEP_MS));
+    var kMax = Math.floor((MAX_MS - totalMs()) / STEP_MS);
+    return { locked: false, kMin: Math.min(0, kMin), kMax: Math.max(0, kMax) };
+  }
+  // 調整はすべてここを通す。変更→schedule()→saveRun()→render()。
+  // 今の位置（経過時間）は動かさない。減らしてもその場で折り返し・終了にはならない（残り30秒以上を保つ）
+  function adjust(part, deltaMs, opts) {
+    opts = opts || {};
+    if (part !== 'first' && part !== 'second') return false;
+    var k = Math.round(deltaMs / STEP_MS);
+    if (!k) return false;
+    var e = elapsed();
+    var r = partRange(part, e);
+    var why = '';
+    if (r.locked) why = part === 'first' ? '前半はもう終わっています' : '';
+    else if (k > r.kMax) why = '合計は' + MAX_MINUTES + '分までです';
+    else if (k < r.kMin) {
+      var len = part === 'first' ? S.firstMs : S.secondMs;
+      why = len + k * STEP_MS < MIN_PART_MS ? '1分より短くはできません' : '残りが短いので、これ以上減らせません';
+    }
+    if (why || r.locked) {
+      if (!opts.quiet && why) toast(why, ADJ_TOAST_MS);
+      return false;
+    }
+    if (part === 'first') S.firstMs += k * STEP_MS;
+    else S.secondMs += k * STEP_MS;
+    schedule();
+    saveRun();
+    render();
+    if (!opts.quiet) adjustToast(part, k * STEP_MS);
+    return true;
+  }
+  // 例「後半 ＋1分 → 終了 10:42」。一時停止中は時刻の代わりに残り時間
+  function adjustToast(part, deltaMs) {
+    var n = Math.abs(deltaMs) / STEP_MS;
+    var head = (part === 'first' ? '前半 ' : '後半 ') + (deltaMs > 0 ? '＋' : '−') + n + '分';
+    var e = elapsed();
+    var rem = totalMs() - e;
+    var tail;
+    if (S.paused) {
+      tail = part === 'first' ? '折り返しまで ' + fmt(S.firstMs - e) + '・残り ' + fmt(rem) : '残り ' + fmt(rem);
+    } else {
+      tail = part === 'first' ? '折り返し ' + clockAfter(S.firstMs - e) + '・終了 ' + clockAfter(rem) : '終了 ' + clockAfter(rem);
+    }
+    toast(head + ' → ' + tail, ADJ_TOAST_MS);
+  }
+
+  // 円のドラッグ：全体の長さは変えず、折り返しの位置だけを動かす（前半が長くなった分だけ後半が短くなる）。
   // 動かせる幅を分単位の kMin〜kMax で返す（＋で前半が長く）。locked は後半に入った・終了画面など
   function splitRange(e) {
     if (S.screen !== 'timer' || S.turnFired || e >= S.firstMs) return { locked: true, kMin: 0, kMax: 0 };
@@ -1171,11 +1246,11 @@ body[data-screen="timer"] .notices{display:flex}
     schedule();
     saveRun();
     render();
-    if (!opts.quiet) adjustToast();
+    if (!opts.quiet) shiftToast();
     return true;
   }
   // 例「前半 8分・後半 7分 → 折り返し 10:42（全体 15分のまま）」。一時停止中は時刻の代わりに残り時間
-  function adjustToast() {
+  function shiftToast() {
     var left = S.firstMs - elapsed();
     var tail = S.paused ? '折り返しまで ' + fmt(left) : '折り返し ' + clockAfter(left);
     toast('前半 ' + fmtLen(S.firstMs) + '・後半 ' + fmtLen(S.secondMs) + ' → ' + tail + '（全体 ' + fmtLen(totalMs()) + 'のまま）', ADJ_TOAST_MS);
@@ -1479,18 +1554,25 @@ body[data-screen="timer"] .notices{display:flex}
       closeAdjust();
     }, ADJ_IDLE_MS);
   }
-  // 「● 前半 8分 ◀ ▶ ● 後半 7分」の段と、その下の一言
+  // 「● 前半 [−] 12分 [＋]」の段。後半に入ったら前半は「済」
   function paintAdjust(vm) {
     if (!adjusting) return;
-    var r = splitRange(vm.e);
-    setText($('adjFirst'), fmtLen(S.firstMs));
-    setText($('adjSecond'), fmtLen(S.secondMs));
-    $('adjLeft').disabled = r.locked || r.kMin > -1;
-    $('adjRight').disabled = r.locked || r.kMax < 1;
-    var note = '全体 ' + fmtLen(totalMs()) + ' はそのまま';
-    if (r.locked) note = '後半に入ったので、配分は変えられません';
-    else if (r.kMin === 0 && r.kMax === 0 && S.firstMs - vm.e >= MIN_LEFT_MS + STEP_MS) note = '全体が短いので、配分は変えられません（前半・後半とも最低1分）';
-    setText($('adjNote'), note);
+    var rows = $('adjPanel').querySelectorAll('.adj-row');
+    for (var i = 0; i < rows.length; i++) {
+      var part = rows[i].getAttribute('data-part');
+      var r = partRange(part, vm.e);
+      var done = part === 'first' && vm.second;
+      rows[i].classList.toggle('is-done', done);
+      setText($(part === 'first' ? 'adjFirst' : 'adjSecond'), done ? '済' : fmtLen(part === 'first' ? S.firstMs : S.secondMs));
+      var btns = rows[i].querySelectorAll('.adj-btn');
+      for (var j = 0; j < btns.length; j++) {
+        var inc = btns[j].getAttribute('data-d') === '1';
+        btns[j].hidden = done;
+        btns[j].disabled = r.locked || (inc ? r.kMax < 1 : r.kMin > -1);
+      }
+    }
+    var sr = splitRange(vm.e);
+    setText($('adjNote'), '全体 ' + fmtLen(totalMs()) + (sr.locked ? '' : '（円の「折」を動かすと、全体はそのまま配分だけ変わる）'));
   }
 
   /* ===== ドラッグ（調整モード中のみ。つまんだ所から先がまるごと動く） ===== */
@@ -1567,7 +1649,7 @@ body[data-screen="timer"] .notices{display:flex}
     drag = null;
     d.el.classList.remove('is-grab');
     try { if (d.el.hasPointerCapture && d.el.hasPointerCapture(d.id)) d.el.releasePointerCapture(d.id); } catch (e) { /* noop */ }
-    if (!silent && S.firstMs !== d.startLen && S.screen === 'timer') adjustToast();
+    if (!silent && S.firstMs !== d.startLen && S.screen === 'timer') shiftToast();
     if (!silent) {
       startAnim(from, ANIM_DROP_MS); // 全体＝1周に描き直す
       bumpAdjust();
@@ -1763,24 +1845,32 @@ body[data-screen="timer"] .notices{display:flex}
 
     $('themeBtn').addEventListener('click', toggleTheme);
     $('themeIconBtn').addEventListener('click', toggleTheme);
-    $('soundBtn').addEventListener('click', function () {
+    // 音のオン・オフ（設定画面とタイマー画面のスイッチは連動。実行中に切り替えたら続きの保存にも残す）
+    function toggleSound() {
       S.sound = !S.sound;
+      if (S.sound) ensureAudio();
       paintSound();
       saveSettings();
-    });
+      if (S.screen !== 'setup') {
+        saveRun();
+        toast(S.sound ? '音をオンにしました' : '音をオフにしました', 2000);
+      }
+    }
+    $('soundBtn').addEventListener('click', toggleSound);
+    $('soundToolBtn').addEventListener('click', toggleSound);
     $('startBtn').addEventListener('click', function () {
       var n = onMinutesChanged();
       if (!isNaN(n)) start(n, S.setupFirstMs);
     });
 
-    // 配分の調整：±ボタンで調整モードを開け閉め。◀▶はすべて shiftTurn() を通す
+    // 時間調整：±ボタンで調整モードを開け閉め。＋−は adjust()、円のドラッグは shiftTurn() を通す
     $('adjBtn').addEventListener('click', function () {
       if (adjusting) closeAdjust(); else openAdjust();
     });
     $('adjPanel').addEventListener('click', function (ev) {
       var b = ev.target.closest && ev.target.closest('.adj-btn');
       if (!b || b.disabled) return;
-      shiftTurn(Number(b.getAttribute('data-d')) * STEP_MS);
+      adjust(b.getAttribute('data-part'), Number(b.getAttribute('data-d')) * STEP_MS);
       bumpAdjust();
     });
     var knobs = $('dial').querySelectorAll('.knob');
@@ -1928,7 +2018,7 @@ body[data-screen="timer"] .notices{display:flex}
 
   // 倍速デバッグ時だけ、確認用に状態を公開
   if (SPEED !== 1) {
-    window.__oritimer = { state: S, tick: tick, fmt: fmt, speed: SPEED, shiftTurn: shiftTurn, splitRange: splitRange,
+    window.__oritimer = { state: S, tick: tick, fmt: fmt, speed: SPEED, adjust: adjust, partRange: partRange, shiftTurn: shiftTurn, splitRange: splitRange,
       totalMs: totalMs, elapsed: elapsed, openAdjust: openAdjust, isAdjusting: function () { return adjusting; } };
   }
 })();
